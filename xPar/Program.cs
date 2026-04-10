@@ -11,11 +11,11 @@ namespace xpar
         {
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
-            
+
             var transformer = new StringTransformer();
             var lines = new List<string>();
             string? curLine;
-            
+
             do
             {
                 curLine = Console.ReadLine();
@@ -25,9 +25,9 @@ namespace xpar
                 }
             }
             while (curLine != null);
-            
+
             // Обрабатываем все строки сразу
-            var results = transformer.Transform(lines.ToArray());
+            var results = transformer.Transform(lines);
             foreach (var result in results)
             {
                 Console.WriteLine(result);

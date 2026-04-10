@@ -1,11 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace xParLib
 {
     public class StringTransformer
     {
-        public string[] Transform(string[] lines)
+        public IReadOnlyList<string> Transform(IReadOnlyList<string> lines)
         {
             return lines.Select(TransformLine).ToArray();
         }
