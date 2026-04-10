@@ -52,6 +52,7 @@ public class ParOptionsTests
     [InlineData("p", null)]
     [InlineData("p0", 0)]
     [InlineData("p5", 5)]
+    [InlineData("5", 5)]
     [InlineData("p12", 12)]
     public void Parse_Prefix_ParsesCorrectly(string arg, int? expected)
     {
@@ -104,6 +105,7 @@ public class ParOptionsTests
     [Theory]
     [InlineData("w", 79)]
     [InlineData("w0", 0)]
+    [InlineData("78", 78)]
     [InlineData("w80", 80)]
     [InlineData("w120", 120)]
     public void Parse_Width_ParsesCorrectly(string arg, int expected)
@@ -225,6 +227,22 @@ public class ParOptionsTests
     }
 
     [Fact]
+    public void Parse_MultipleArgsInOneArg_ParsesAllCorrectly()
+    {
+        // Act
+        var options = ParOptions.Parse(new[] { "80h2fqjre"});
+
+        // Assert
+        Assert.Equal(80, options.Width);
+        Assert.Equal(2, options.Hang);
+        Assert.True(options.Fit);
+        Assert.True(options.Quote);
+        Assert.True(options.Expel);
+        Assert.True(options.Just);
+        Assert.Equal(3, options.Repeat);
+    }
+
+        [Fact]
     public void Parse_Touch_Default_IsFitOrLast()
     {
         // Act - без флагов

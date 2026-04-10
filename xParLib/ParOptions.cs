@@ -96,6 +96,7 @@ namespace xParLib
             }
 
             // Проверка: аргумент начинается с цифры → число без флага
+            int pos = 0;
             if (s.Length > 0 && char.IsDigit(s[0]))
             {
                 int val = ReadAllDigits(s, 0);
@@ -103,11 +104,10 @@ namespace xParLib
                     options.Prefix = val;
                 else
                     options.Width = val;
-                return;
+                pos = GetDigitsLength(s, 0);
             }
 
             // Парсинг параметров
-            int pos = 0;
             while (pos < s.Length)
             {
                 char flag = s[pos];
@@ -183,6 +183,16 @@ namespace xParLib
                         throw new ArgumentException($"Bad argument: {arg}");
                 }
             }
+        }
+
+        private static int GetDigitsLength(string s, int start)
+        {
+            int pos = start;
+            while (pos < s.Length && char.IsDigit(s[pos]))
+            {
+                pos++;
+            }
+            return pos - start;
         }
 
         private static int ReadAllDigits(string s, int start)
