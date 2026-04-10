@@ -14,6 +14,9 @@ namespace xParLib
     /// <c>Prefix</c> и <c>Suffix</c> вычисляются на основе входных строк (comprelen/comsuflen),
     /// поэтому их значение по умолчанию определяется в методе <c>Transform</c>, а не здесь.
     /// <c>Touch</c> вычисляется в <c>Parse</c> как <c>Fit || Last</c>.
+    /// 
+    /// Charset'ы (BodyChars, ProtectChars и т.д.) инициализируются вызывающим кодом (Main)
+    /// из переменных окружения или конфигурации, и передаются в Parse.
     /// </remarks>
     public class ParOptions
     {
@@ -44,15 +47,40 @@ namespace xParLib
         public bool Help { get; set; } = false;
         public bool Version { get; set; } = false;
 
+        // Charset'ы (инициализируются вызывающим кодом)
+        public Charset? BodyChars { get; set; }
+        public Charset? ProtectChars { get; set; }
+        public Charset? QuoteChars { get; set; }
+        public Charset? WhiteChars { get; set; }
+        public Charset? TerminalChars { get; set; }
+
         /// <summary>
         /// Разбирает аргументы командной строки и возвращает экземпляр ParOptions.
         /// </summary>
         /// <param name="args">Аргументы командной строки</param>
+        /// <param name="bodyChars">Набор символов тела (создаётся вызывающим кодом)</param>
+        /// <param name="protectChars">Набор защитных символов (создаётся вызывающим кодом)</param>
+        /// <param name="quoteChars">Набор символов цитирования (создаётся вызывающим кодом)</param>
+        /// <param name="whiteChars">Набор пробельных символов (создаётся вызывающим кодом)</param>
+        /// <param name="terminalChars">Набор терминальных символов (создаётся вызывающим кодом)</param>
         /// <returns>Экземпляр ParOptions с заполненными параметрами</returns>
         /// <exception cref="ArgumentException">Если аргумент некорректен</exception>
-        public static ParOptions Parse(string[] args)
+        public static ParOptions Parse(
+            string[] args,
+            Charset bodyChars,
+            Charset protectChars,
+            Charset quoteChars,
+            Charset whiteChars,
+            Charset terminalChars)
         {
-            var options = new ParOptions();
+            var options = new ParOptions
+            {
+                BodyChars = bodyChars ?? throw new ArgumentNullException(nameof(bodyChars)),
+                ProtectChars = protectChars ?? throw new ArgumentNullException(nameof(protectChars)),
+                QuoteChars = quoteChars ?? throw new ArgumentNullException(nameof(quoteChars)),
+                WhiteChars = whiteChars ?? throw new ArgumentNullException(nameof(whiteChars)),
+                TerminalChars = terminalChars ?? throw new ArgumentNullException(nameof(terminalChars))
+            };
 
             foreach (var arg in args)
             {
@@ -87,11 +115,10 @@ namespace xParLib
                 return;
             }
 
-            // Обработка B, P, Q, W, Z (наборы символов) — пока пропускаем
-            if (s.StartsWith("B") || s.StartsWith("P") || s.StartsWith("Q") ||
-                s.StartsWith("W") || s.StartsWith("Z"))
+            // Обработка B, P, Q, W, Z (наборы символов)
+            // Эти опции должны занимать целый аргумент
+            if (s.Length > 1 && TryParseCharsetOption(s, options))
             {
-                // TODO: реализовать парсинг наборов символов
                 return;
             }
 
@@ -183,6 +210,54 @@ namespace xParLib
                         throw new ArgumentException($"Bad argument: {arg}");
                 }
             }
+        }
+
+        /// <summary>
+        /// Пытается разобрать charset-опцию (B, P, Q, W, Z).
+        /// Возвращает true, если опция распознана как charset-опция.
+        /// </summary>
+        private static bool TryParseCharsetOption(string arg, ParOptions options)
+        {
+            if (arg.Length < 3) return false; // Минимум: B=1
+
+            char flag = arg[0];
+            char op = arg[1];
+
+            // Оператор должен быть =, + или -
+            if (op != '=' && op != '+' && op != '-') return false;
+
+            // Определяем, какой charset модифицировать
+            Charset? targetCharset = flag switch
+            {
+                'B' => options.BodyChars,
+                'P' => options.ProtectChars,
+                'Q' => options.QuoteChars,
+                'W' => options.WhiteChars,
+                'Z' => options.TerminalChars,
+                _ => null
+            };
+
+            if (targetCharset == null) return false;
+
+            // Разбираем charset set
+            string charsetStr = arg.Substring(2);
+            var change = Charset.Parse(charsetStr);
+
+            // Применяем операцию
+            switch (op)
+            {
+                case '=':
+                    targetCharset.Replace(change);
+                    break;
+                case '+':
+                    targetCharset.Add(change);
+                    break;
+                case '-':
+                    targetCharset.Remove(change);
+                    break;
+            }
+
+            return true;
         }
 
         private static int GetDigitsLength(string s, int start)

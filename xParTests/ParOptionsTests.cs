@@ -4,11 +4,28 @@ namespace xParTests;
 
 public class ParOptionsTests
 {
+    // Helper для создания charset'ов по умолчанию
+    private static Charset CreateDefaultBodyChars() => Charset.Parse("");
+    private static Charset CreateDefaultProtectChars() => Charset.Parse("");
+    private static Charset CreateDefaultQuoteChars() => Charset.Parse("> ");
+    private static Charset CreateDefaultWhiteChars() => Charset.Parse(" \f\n\r\t\v");
+    private static Charset CreateDefaultTerminalChars() => Charset.Parse(".?!:");
+
+    private static ParOptions ParseWithDefaults(string[] args)
+    {
+        return ParOptions.Parse(args,
+            CreateDefaultBodyChars(),
+            CreateDefaultProtectChars(),
+            CreateDefaultQuoteChars(),
+            CreateDefaultWhiteChars(),
+            CreateDefaultTerminalChars());
+    }
+
     [Fact]
     public void Parse_DefaultValues_ReturnsCorrectDefaults()
     {
         // Act
-        var options = ParOptions.Parse(Array.Empty<string>());
+        var options = ParseWithDefaults(Array.Empty<string>());
 
         // Assert
         Assert.Equal(0, options.Hang);
@@ -42,7 +59,7 @@ public class ParOptionsTests
     public void Parse_Hang_ParsesCorrectly(string arg, int expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Hang);
@@ -57,7 +74,7 @@ public class ParOptionsTests
     public void Parse_Prefix_ParsesCorrectly(string arg, int? expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Prefix);
@@ -70,7 +87,7 @@ public class ParOptionsTests
     public void Parse_Repeat_ParsesCorrectly(string arg, int expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Repeat);
@@ -83,7 +100,7 @@ public class ParOptionsTests
     public void Parse_Suffix_ParsesCorrectly(string arg, int? expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Suffix);
@@ -96,7 +113,7 @@ public class ParOptionsTests
     public void Parse_Tab_ParsesCorrectly(string arg, int expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Tab);
@@ -111,7 +128,7 @@ public class ParOptionsTests
     public void Parse_Width_ParsesCorrectly(string arg, int expected)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expected, options.Width);
@@ -123,7 +140,7 @@ public class ParOptionsTests
     public void Parse_Body_SetsToTrue(string arg)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.True(options.Body);
@@ -145,7 +162,7 @@ public class ParOptionsTests
     public void Parse_BooleanFlags_SetsToTrue(string arg)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         switch (arg)
@@ -169,7 +186,7 @@ public class ParOptionsTests
     public void Parse_Help_SetsHelpToTrue()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "help" });
+        var options = ParseWithDefaults(new[] { "help" });
 
         // Assert
         Assert.True(options.Help);
@@ -179,7 +196,7 @@ public class ParOptionsTests
     public void Parse_Version_SetsVersionToTrue()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "version" });
+        var options = ParseWithDefaults(new[] { "version" });
 
         // Assert
         Assert.True(options.Version);
@@ -192,7 +209,7 @@ public class ParOptionsTests
     public void Parse_NumberWithoutFlag_SetsPrefix(string arg, int expectedPrefix)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Equal(expectedPrefix, options.Prefix);
@@ -206,7 +223,7 @@ public class ParOptionsTests
     public void Parse_NumberWithoutFlag_SetsWidth(string arg, int expectedWidth)
     {
         // Act
-        var options = ParOptions.Parse(new[] { arg });
+        var options = ParseWithDefaults(new[] { arg });
 
         // Assert
         Assert.Null(options.Prefix);
@@ -217,7 +234,7 @@ public class ParOptionsTests
     public void Parse_MultipleArgs_ParsesAllCorrectly()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "w80", "h2", "f", "q" });
+        var options = ParseWithDefaults(new[] { "w80", "h2", "f", "q" });
 
         // Assert
         Assert.Equal(80, options.Width);
@@ -230,7 +247,7 @@ public class ParOptionsTests
     public void Parse_MultipleArgsInOneArg_ParsesAllCorrectly()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "80h2fqjre"});
+        var options = ParseWithDefaults(new[] { "80h2fqjre"});
 
         // Assert
         Assert.Equal(80, options.Width);
@@ -246,19 +263,19 @@ public class ParOptionsTests
     public void Parse_Touch_Default_IsFitOrLast()
     {
         // Act - без флагов
-        var options1 = ParOptions.Parse(Array.Empty<string>());
+        var options1 = ParseWithDefaults(Array.Empty<string>());
 
         // Assert
         Assert.False(options1.Touch);
 
         // Act - с fit
-        var options2 = ParOptions.Parse(new[] { "f" });
+        var options2 = ParseWithDefaults(new[] { "f" });
 
         // Assert
         Assert.True(options2.Touch);
 
         // Act - с last
-        var options3 = ParOptions.Parse(new[] { "l" });
+        var options3 = ParseWithDefaults(new[] { "l" });
 
         // Assert
         Assert.True(options3.Touch);
@@ -268,7 +285,7 @@ public class ParOptionsTests
     public void Parse_LeadingDash_Ignored()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "-w80", "-f" });
+        var options = ParseWithDefaults(new[] { "-w80", "-f" });
 
         // Assert
         Assert.Equal(80, options.Width);
@@ -279,7 +296,7 @@ public class ParOptionsTests
     public void Parse_LastValueWins_WhenParameterSetMultipleTimes()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "w50", "w80", "w100" });
+        var options = ParseWithDefaults(new[] { "w50", "w80", "w100" });
 
         // Assert
         Assert.Equal(100, options.Width);
@@ -289,7 +306,7 @@ public class ParOptionsTests
     public void Parse_LastValueWins_WhenBooleanParameterToggled()
     {
         // Act
-        var options = ParOptions.Parse(new[] { "f", "t0", "f" });
+        var options = ParseWithDefaults(new[] { "f", "t0", "f" });
 
         // Assert
         Assert.True(options.Fit);
@@ -300,7 +317,7 @@ public class ParOptionsTests
     public void Parse_Touch_ExplicitValueNotOverriddenByFitOrLast()
     {
         // Act - явно установлен t0, но есть f и l
-        var options = ParOptions.Parse(new[] { "f", "l", "t0" });
+        var options = ParseWithDefaults(new[] { "f", "l", "t0" });
 
         // Assert
         Assert.True(options.Fit);
@@ -318,7 +335,7 @@ public class ParOptionsTests
         // Этот тест подтверждает, что hang определён до проверки prefix.
 
         // Act
-        var options = ParOptions.Parse(new[] { "h5" });
+        var options = ParseWithDefaults(new[] { "h5" });
 
         // Assert
         Assert.Equal(5, options.Hang);
@@ -332,7 +349,7 @@ public class ParOptionsTests
         // Touch = fit || last, если touch не задан явно.
 
         // Act - оба true
-        var options1 = ParOptions.Parse(new[] { "f", "l" });
+        var options1 = ParseWithDefaults(new[] { "f", "l" });
 
         // Assert
         Assert.True(options1.Fit);
@@ -340,11 +357,11 @@ public class ParOptionsTests
         Assert.True(options1.Touch); // = fit || last
 
         // Act - только last
-        var options2 = ParOptions.Parse(new[] { "l" });
+        var options2 = ParseWithDefaults(new[] { "l" });
         Assert.True(options2.Touch);
 
         // Act - ни одного
-        var options3 = ParOptions.Parse(Array.Empty<string>());
+        var options3 = ParseWithDefaults(Array.Empty<string>());
         Assert.False(options3.Touch);
     }
 }
