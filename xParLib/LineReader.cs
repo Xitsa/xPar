@@ -517,5 +517,176 @@ namespace xParLib
 
             return new CompresuflenResult(prefix, suffix);
         }
+
+        //
+        // Delimit — аналог delimit() из par.c
+        //
+
+        /// <summary>
+        /// Определяет бестелесные строки и размечает свойства сегментов.
+        /// Аналог delimit() из par.c (строки 544–628).
+        /// </summary>
+        /// <param name="segments">Массив сегментов строк (LineSegment)</param>
+        /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
+        /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
+        /// <param name="bodyChars">Набор body-символов</param>
+        /// <param name="repeat">Минимальное кол-во повторений для bodiless</param>
+        /// <param name="body">Флаг режима body (false = 0, true = 1)</param>
+        /// <param name="div">Флаг деления по отступам (false = 0, true = 1)</param>
+        /// <param name="minPrefix">Минимальная известная длина префикса (в графемах)</param>
+        /// <param name="minSuffix">Минимальная известная длина суффикса (в графемах)</param>
+        public static void Delimit(
+            IReadOnlyList<LineSegment> segments,
+            int startIndex,
+            int endIndex,
+            Charset bodyChars,
+            int repeat,
+            bool body,
+            bool div,
+            int minPrefix,
+            int minSuffix)
+        {
+            if (segments == null) throw new ArgumentNullException(nameof(segments));
+            if (startIndex < 0 || startIndex > endIndex + 1 || endIndex >= segments.Count)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // par.c 562: if (endline == lines) return;
+            if (startIndex > endIndex) return;
+
+            // par.c 564-568: if (endline == lines + 1)
+            if (startIndex == endIndex)
+            {
+                var prop = segments[startIndex].Prop;
+                prop.Flags |= LineFlags.First;
+                prop.P = minPrefix;
+                prop.S = minSuffix;
+                segments[startIndex].Prop = prop;
+                return;
+            }
+
+            // par.c 570: compresuflen(...)
+            var csResult = Compresuflen(segments, startIndex, endIndex, bodyChars, body, minPrefix, minSuffix);
+            minPrefix = csResult.Prefix;
+            minSuffix = csResult.Suffix;
+
+            // par.c 572-594: определение bodiless строк
+            bool hasAnyBodiless = false;
+
+            for (int lineIdx = startIndex; lineIdx <= endIndex; lineIdx++)
+            {
+                var prop = segments[lineIdx].Prop;
+                prop.Flags |= LineFlags.Bodiless;
+                prop.P = minPrefix;
+                prop.S = minSuffix;
+
+                var graphemes = GetGraphemes(segments[lineIdx].Line);
+                int totalG = graphemes.Count;
+                int bodyEnd = totalG - minSuffix;
+                int bodyStart = minPrefix;
+
+                string repeatGrapheme;
+                if (bodyStart < bodyEnd)
+                    repeatGrapheme = graphemes[bodyStart];
+                else
+                    repeatGrapheme = " ";
+
+                // par.c 582-583: проверка на НЕ bodiless
+                if (repeatGrapheme != " " &&
+                    (IsInserted(prop) || repeat == 0 || (bodyEnd - bodyStart) < repeat))
+                {
+                    prop.Flags &= ~LineFlags.Bodiless;
+                }
+                else
+                {
+                    // par.c 584-590: проверка повторяемости
+                    for (int g = bodyStart + 1; g < bodyEnd; g++)
+                    {
+                        if (graphemes[g] != repeatGrapheme)
+                        {
+                            prop.Flags &= ~LineFlags.Bodiless;
+                            break;
+                        }
+                    }
+                }
+
+                if (IsBodiless(prop))
+                {
+                    hasAnyBodiless = true;
+                    prop.Rc = repeatGrapheme;
+                }
+
+                segments[lineIdx].Prop = prop;
+            }
+
+            // par.c 596-613: рекурсивная обработка
+            if (hasAnyBodiless)
+            {
+                int lineIdx = startIndex;
+                while (lineIdx <= endIndex)
+                {
+                    if (IsBodiless(segments[lineIdx].Prop))
+                    {
+                        lineIdx++;
+                        continue;
+                    }
+
+                    // Найти следующий bodiless
+                    int nextLineIdx = lineIdx + 1;
+                    while (nextLineIdx <= endIndex && !IsBodiless(segments[nextLineIdx].Prop))
+                        nextLineIdx++;
+
+                    // Рекурсивный вызов для подблока [lineIdx .. nextLineIdx-1]
+                    if (lineIdx <= nextLineIdx - 1)
+                    {
+                        Delimit(segments, lineIdx, nextLineIdx - 1, bodyChars, repeat, body, div, minPrefix, minSuffix);
+                    }
+
+                    lineIdx = nextLineIdx;
+                }
+
+                return;
+            }
+
+            // par.c 615-618: нет div → First на первую строку
+            if (!div)
+            {
+                var prop = segments[startIndex].Prop;
+                prop.Flags |= LineFlags.First;
+                segments[startIndex].Prop = prop;
+                return;
+            }
+
+            // par.c 620-628: div=true — разметка по статусу пробела
+            var firstGraphemes = GetGraphemes(segments[startIndex].Line);
+            bool firstStatus = minPrefix < firstGraphemes.Count && firstGraphemes[minPrefix] == " ";
+
+            for (int lineIdx = startIndex; lineIdx <= endIndex; lineIdx++)
+            {
+                var g = GetGraphemes(segments[lineIdx].Line);
+                bool currentStatus = minPrefix < g.Count && g[minPrefix] == " ";
+                if (currentStatus == firstStatus)
+                {
+                    var prop = segments[lineIdx].Prop;
+                    prop.Flags |= LineFlags.First;
+                    segments[lineIdx].Prop = prop;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Проверить: сегмент помечен как бестелесный.
+        /// </summary>
+        private static bool IsBodiless(LineProp prop)
+        {
+            return (prop.Flags & LineFlags.Bodiless) != 0;
+        }
+
+        /// <summary>
+        /// Проверить: сегмент помечен как вставленный (Insert flag).
+        /// </summary>
+        private static bool IsInserted(LineProp prop)
+        {
+            return (prop.Flags & LineFlags.Inserted) != 0;
+        }
     }
 }

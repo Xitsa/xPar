@@ -608,3 +608,237 @@ public class CompresuflenTests
 
     #endregion
 }
+
+// ============================================================
+// Тесты для Delimit
+// ============================================================
+
+public class DelimitTests
+{
+    private static Charset EmptyBodyChars => Charset.Parse("");
+    private static Charset AlphaBodyChars => Charset.Parse("_A_a");
+    private static Charset AlphaPointBodyChars => Charset.Parse("._A_a");
+
+    // Helper: преобразует string[] в LineSegment[] с пустыми флагами
+    private static LineSegment[] ToSegments(params string[] lines)
+    {
+        return lines.Select(l => new LineSegment(l, new LineProp())).ToArray();
+    }
+
+    #region Базовые тесты
+
+    [Fact]
+    public void Delimit_EmptyRange_NoChanges()
+    {
+        var segments = ToSegments("abc");
+
+        LineReader.Delimit(segments, 1, 0, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(LineFlags.None, segments[0].Prop.Flags);
+    }
+
+    [Fact]
+    public void Delimit_SingleSegment_FirstFlagSet()
+    {
+        var segments = ToSegments("hello world");
+
+        LineReader.Delimit(segments, 0, 0, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 2, minSuffix: 3);
+
+        var prop = segments[0].Prop;
+        Assert.Equal(LineFlags.First, prop.Flags);
+        Assert.Equal(2, prop.P);
+        Assert.Equal(3, prop.S);
+    }
+
+    [Fact]
+    public void Delimit_TwoIdenticalSegments_FirstAndBodiless()
+    {
+        // Две одинаковые строки без body → обе bodiless (строки из одинаковых символов)
+        var segments = ToSegments("abc", "abc");
+
+        LineReader.Delimit(segments, 0, 1, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        // Обе строки "abc" — одинаковые символы → bodiless с rc='a'
+        Assert.True(IsBodiless(segments[0].Prop));
+        Assert.True(IsBodiless(segments[1].Prop));
+    }
+
+    #endregion
+
+    #region Тесты bodiless
+
+    [Fact]
+    public void Delimit_SpaceLine_Bodiless()
+    {
+        // Строка из пробелов между двумя строками
+        var segments = ToSegments("hello", "     ", "world");
+
+        LineReader.Delimit(segments, 0, 2, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        // Средняя строка — bodiless с rc=" "
+        Assert.True(IsBodiless(segments[1].Prop));
+        Assert.Equal(" ", segments[1].Prop.Rc);
+    }
+
+    [Fact]
+    public void Delimit_RepeatedChars_Bodiless()
+    {
+        // Строка из повторяющихся символов "---" (repeat=3) → bodiless
+        var segments = ToSegments("hello", "---", "world");
+
+        LineReader.Delimit(segments, 0, 2, EmptyBodyChars, repeat: 3, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.True(IsBodiless(segments[1].Prop));
+        Assert.Equal("-", segments[1].Prop.Rc);
+    }
+
+    [Fact]
+    public void Delimit_TooShortRepeat_NotBodiless()
+    {
+        // Строка из "--" (repeat=3) → НЕ bodiless (слишком короткая)
+        var segments = ToSegments("hello", "--", "world");
+
+        LineReader.Delimit(segments, 0, 2, EmptyBodyChars, repeat: 3, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.False(IsBodiless(segments[1].Prop));
+    }
+
+    [Fact]
+    public void Delimit_InsertedWithNonSpace_NotBodiless()
+    {
+        // Вставленная строка (Inserted) с rc != " " → НЕ bodiless
+        var segs = new[]
+        {
+            new LineSegment("hello", new LineProp()),
+            new LineSegment("---", new LineProp(flags: LineFlags.Inserted)),
+            new LineSegment("world", new LineProp()),
+        };
+
+        LineReader.Delimit(segs, 0, 2, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.False(IsBodiless(segs[1].Prop));
+    }
+
+    #endregion
+
+    #region Тесты рекурсии
+
+    [Fact]
+    public void Delimit_BodilessInMiddle_RecursiveSubblocks()
+    {
+        // "aaa", "---", "bbb" → все три строки bodiless (одинаковые символы),
+        // но "---" тоже bodiless, и "aaa"/"bbb" — тоже (все символы одинаковы).
+        // При рекурсии подблоки получают First, но Bodiless сохраняется.
+        var segments = ToSegments("aaa", "---", "bbb");
+
+        LineReader.Delimit(segments, 0, 2, EmptyBodyChars, repeat: 3, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.True(IsBodiless(segments[0].Prop)); // "aaa" — все одинаковые
+        Assert.True(IsBodiless(segments[1].Prop)); // "---" — все одинаковые
+        Assert.True(IsBodiless(segments[2].Prop)); // "bbb" — все одинаковые
+        // Все bodiless → нет рекурсии → First не ставится
+    }
+
+    [Fact]
+    public void Delimit_MultipleBodilessLines_EachMarked()
+    {
+        // "aaa", "---", "bbb", "===" → все bodiless (одинаковые символы)
+        var segments = ToSegments("aaa", "---", "bbb", "===");
+
+        LineReader.Delimit(segments, 0, 3, EmptyBodyChars, repeat: 3, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.True(IsBodiless(segments[0].Prop));
+        Assert.True(IsBodiless(segments[1].Prop));
+        Assert.True(IsBodiless(segments[2].Prop));
+        Assert.True(IsBodiless(segments[3].Prop));
+    }
+
+    #endregion
+
+    #region Тесты div
+
+    [Fact]
+    public void Delimit_NoDiv_OnlyFirstGetsFirstFlag()
+    {
+        // div=false, нет bodiless → только первая строка получает First
+        var segments = ToSegments("hello world", "foo bar baz");
+
+        LineReader.Delimit(segments, 0, 1, EmptyBodyChars, repeat: 0, body: false, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(LineFlags.First, segments[0].Prop.Flags);
+        Assert.Equal(LineFlags.None, segments[1].Prop.Flags & LineFlags.First);
+    }
+
+    [Fact]
+    public void Delimit_WithDiv_SameStatusGetsFirst()
+    {
+        // div=true: строки с одинаковым статусом пробела на позиции minPrefix
+        // " abc" (пробел на 0) и " def" (пробел на 0) → обе First
+        var segments = ToSegments(" abc", " def");
+
+        LineReader.Delimit(segments, 0, 1, EmptyBodyChars, repeat: 0, body: false, div: true, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(LineFlags.First, segments[0].Prop.Flags);
+        Assert.Equal(LineFlags.First, segments[1].Prop.Flags);
+    }
+
+    [Fact]
+    public void Delimit_WithDiv_DifferentStatus()
+    {
+        // div=true: разные статусы → только первая и совпадающие
+        // "abc" (нет пробела на 0), " def" (пробел на 0) → только первая First
+        var segments = ToSegments("abc", " def");
+
+        LineReader.Delimit(segments, 0, 1, EmptyBodyChars, repeat: 0, body: false, div: true, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(LineFlags.First, segments[0].Prop.Flags);
+        Assert.Equal(LineFlags.None, segments[1].Prop.Flags & LineFlags.First);
+    }
+
+    #endregion
+
+    #region Тесты body=1
+
+    [Fact]
+    public void Delimit_Body1_PrefixSuffixWithBody()
+    {
+        // body=1: префикс/суффикс с учётом body-символов
+        // "> text1 ." и "> text2 ." → общий префикс "> text" (6),
+        // body=1 корректировка: все буквы — body, отступаем до "> " → P=2
+        // суффикс: " ." → S=2
+        var segments = ToSegments("> text1 .", "> text2 .");
+
+        LineReader.Delimit(segments, 0, 1, AlphaBodyChars, repeat: 0, body: true, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(2, segments[0].Prop.P);
+        Assert.Equal(2, segments[0].Prop.S);
+    }
+
+    [Fact]
+    public void Delimit_Body1_CuriousPrefixSuffixWithBody()
+    {
+        var segments = ToSegments(
+"        amc> Par still pays attention to body characters.",
+"        amc> Par should not mistake \"Par\" for part of the prefix.",
+"        amc> Par should not mistake \".\" for a suffix."
+        );
+
+        LineReader.Delimit(segments, 0, 2, AlphaPointBodyChars, repeat: 0, body: true, div: false, minPrefix: 0, minSuffix: 0);
+
+        Assert.Equal(13, segments[0].Prop.P);
+        Assert.Equal(0, segments[0].Prop.S);
+        Assert.Equal(LineFlags.First, segments[0].Prop.Flags);
+        Assert.Equal(13, segments[1].Prop.P);
+        Assert.Equal(0, segments[1].Prop.S);
+        Assert.Equal(13, segments[2].Prop.P);
+        Assert.Equal(0, segments[2].Prop.S);
+    }
+
+    #endregion
+
+    // Helper для проверки bodiless
+    private static bool IsBodiless(LineProp prop)
+    {
+        return (prop.Flags & LineFlags.Bodiless) != 0;
+    }
+}
