@@ -363,16 +363,16 @@ namespace xParLib
         /// Вычисляет comprelen и comsuflen для набора строк.
         /// Аналог compresuflen() из par.c (строки 481–540).
         /// </summary>
-        /// <param name="lines">Массив строк</param>
-        /// <param name="startIndex">Индекс первой строки для обработки (включительно)</param>
-        /// <param name="endIndex">Индекс последней строки для обработки (включительно)</param>
+        /// <param name="segments">Массив сегментов строк (LineSegment)</param>
+        /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
+        /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
         /// <param name="bodyChars">Набор body-символов</param>
         /// <param name="body">Флаг режима body (false = 0, true = 1), соответствует ParOptions.Body</param>
         /// <param name="minPrefix">Минимальная известная длина префикса (в графемах)</param>
         /// <param name="minSuffix">Минимальная известная длина суффикса (в графемах)</param>
         /// <returns>CompresuflenResult с полями Prefix (comprelen) и Suffix (comsuflen) в графемах</returns>
         public static CompresuflenResult Compresuflen(
-            IReadOnlyList<string> lines,
+            IReadOnlyList<LineSegment> segments,
             int startIndex,
             int endIndex,
             Charset bodyChars,
@@ -380,12 +380,12 @@ namespace xParLib
             int minPrefix,
             int minSuffix)
         {
-            if (lines == null) throw new ArgumentNullException(nameof(lines));
-            if (startIndex < 0 || startIndex > endIndex || endIndex >= lines.Count)
+            if (segments == null) throw new ArgumentNullException(nameof(segments));
+            if (startIndex < 0 || startIndex > endIndex || endIndex >= segments.Count)
                 throw new ArgumentOutOfRangeException(nameof(startIndex));
 
-            // Базовая строка — lines[startIndex]
-            var baseGraphemes = GetGraphemes(lines[startIndex]);
+            // Базовая строка — segments[startIndex].Line
+            var baseGraphemes = GetGraphemes(segments[startIndex].Line);
             int totalBase = baseGraphemes.Count;
 
             // ===== Часть A: вычисление префикса (comprelen) =====
@@ -409,7 +409,7 @@ namespace xParLib
             // par.c 498-502: сузить end по всем строкам
             for (int lineIdx = startIndex + 1; lineIdx <= endIndex; lineIdx++)
             {
-                var g = GetGraphemes(lines[lineIdx]);
+                var g = GetGraphemes(segments[lineIdx].Line);
                 int totalG = g.Count;
 
                 int p1 = knownStart; // индекс в baseGraphemes
@@ -473,7 +473,7 @@ namespace xParLib
             // par.c 521-527: сузить start по всем строкам
             for (int lineIdx = startIndex + 1; lineIdx <= endIndex; lineIdx++)
             {
-                var g = GetGraphemes(lines[lineIdx]);
+                var g = GetGraphemes(segments[lineIdx].Line);
                 int totalG = g.Count;
 
                 int knownstart2 = prefix; // индекс после префикса в текущей строке

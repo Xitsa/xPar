@@ -54,6 +54,7 @@
 - `xParLib.ReadLinesResult` — результат работы `LineReader.ReadLines`
 - `xParLib.CompresuflenResult` — результат вычисления comprelen/comsuflen (поля Prefix, Suffix)
 - `LineReader.Compresuflen(...)` — вычисление общего префикса и суффикса (аналог `compresuflen()`)
+  - Сигнатура: `Compresuflen(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, Charset bodyChars, bool body, int minPrefix, int minSuffix)`
 
 ## Основные алгоритмы оригинала (par.doc)
 - **comprelen** — длина общего префикса строк

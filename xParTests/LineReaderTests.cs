@@ -387,15 +387,21 @@ public class CompresuflenTests
     private static Charset AlphaBodyChars => Charset.Parse("_A_a");
     private static Charset AlphaPointBodyChars => Charset.Parse("._A_a");
 
+    // Helper: преобразует string[] в LineSegment[] с пустыми флагами
+    private static LineSegment[] ToSegments(params string[] lines)
+    {
+        return lines.Select(l => new LineSegment(l, new LineProp())).ToArray();
+    }
+
     #region Базовые тесты
 
     [Fact]
     public void Compresuflen_SingleLine_PrefixIsWholeLine()
     {
         // Одна строка: при body=0 весь префикс — до первого body-символа (нет body → вся строка)
-        var lines = new[] { "abc" };
+        var segments = ToSegments("abc");
 
-        var result = LineReader.Compresuflen(lines, 0, 0, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 0, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(3, result.Prefix); // "abc" — 3 графемы
         Assert.Equal(0, result.Suffix);
@@ -404,9 +410,9 @@ public class CompresuflenTests
     [Fact]
     public void Compresuflen_TwoIdenticalLines_PrefixIsWholeLine()
     {
-        var lines = new[] { "abc", "abc" };
+        var segments = ToSegments("abc", "abc");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(3, result.Prefix);
         Assert.Equal(0, result.Suffix);
@@ -415,9 +421,9 @@ public class CompresuflenTests
     [Fact]
     public void Compresuflen_TwoLinesWithCommonPrefix()
     {
-        var lines = new[] { "abcdef", "abcxyz" };
+        var segments = ToSegments("abcdef", "abcxyz");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(3, result.Prefix); // "abc"
     }
@@ -425,9 +431,9 @@ public class CompresuflenTests
     [Fact]
     public void Compresuflen_TwoLinesWithCommonSuffix()
     {
-        var lines = new[] { "abcmno", "xyzmno" };
+        var segments = ToSegments("abcmno", "xyzmno");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(3, result.Suffix); // "mno"
     }
@@ -442,10 +448,10 @@ public class CompresuflenTests
         // body=0: префикс останавливается перед первым body-символом
         // ". abc" и ". def" — общий префикс ". " (2 графемы), потом 'a' и 'd' — не body,
         // но '.' — body, так что префикс до '.' → 2
-        var lines = new[] { "> text1 .", "> text2 ." };
+        var segments = ToSegments("> text1 .", "> text2 .");
 
         // BodyChars = буквы; префикс "> " — 2 графемы
-        var result = LineReader.Compresuflen(lines, 0, 1, AlphaBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, AlphaBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(2, result.Prefix); // "> "
     }
@@ -454,9 +460,9 @@ public class CompresuflenTests
     public void Compresuflen_Body0_SuffixStopsBeforeTrailingBody()
     {
         // body=0: суффикс не включает trailing body-символы
-        var lines = new[] { "abc !", "xyz !" };
+        var segments = ToSegments("abc !", "xyz !");
         // " !" — суффикс, '!' не body, пробел не body → " !" = 2 графемы
-        var result = LineReader.Compresuflen(lines, 0, 1, AlphaBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, AlphaBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(2, result.Suffix);
     }
@@ -471,9 +477,9 @@ public class CompresuflenTests
         // body=1: префикс до последнего non-space non-body символа.
         // "abc def" и "abc xyz" — общий префикс "abc ", но все символы — body (буквы),
         // нет non-body → префикс = 0.
-        var lines = new[] { "abc def", "abc xyz" };
+        var segments = ToSegments("abc def", "abc xyz");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(0, result.Prefix);
     }
@@ -485,9 +491,9 @@ public class CompresuflenTests
         // '! ' — non-body, но '!' — последний non-space non-body →
         // корректировка не двигает end (пробел пропускаем, '!' — non-body → break)
         // prefix = 4
-        var lines = new[] { "ab! def", "ab! xyz" };
+        var segments = ToSegments("ab! def", "ab! xyz");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(4, result.Prefix); // "ab! "
     }
@@ -503,9 +509,9 @@ public class CompresuflenTests
         // g[2]='c' vs baseGraphemes[3]=' ' → не равны → bStart=4
         // body=1: bStart=4, knownEnd=5, baseGraphemes[4]=' ' → bStart=5, затем откат на 1 → bStart=4
         // suffix = 5 - 4 = 1
-        var lines = new[] { "abc  ", "abc " };
+        var segments = ToSegments("abc  ", "abc ");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, AlphaBodyChars, body: true, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(0, result.Prefix);
         Assert.Equal(1, result.Suffix);
@@ -515,21 +521,16 @@ public class CompresuflenTests
     [Fact]
     public void Compresuflen_Body1_PrefixSuffixCare()
     {
-        // body=1: "abc  " и "abc " — общий префикс после A3 = "abc " (4 графемы),
-        // но body=1 корректировка: 'c' — body → префикс сужается до 0.
-        // Суффикс: после префикса 0, baseGraphemes = ['a','b','c',' ',' '], bKnownEnd = 5
-        // bStart = bKnownStart = 0; для второй строки g=['a','b','c',' '], p1=5, p2=4
-        // g[3]=' ' vs baseGraphemes[4]=' ' → равны → p1=4,p2=3
-        // g[2]='c' vs baseGraphemes[3]=' ' → не равны → bStart=4
-        // body=1: bStart=4, knownEnd=5, baseGraphemes[4]=' ' → bStart=5, затем откат на 1 → bStart=4
-        // suffix = 5 - 4 = 1
-        var lines = new[] {
+        // body=1: три строки с общим префиксом "        amc> " (13 графем),
+        // но body=1 корректировка: буквы — body, так что префикс включает только
+        // не-body символы после последнего body → "        amc> " = 13
+        var segments = ToSegments(
 "        amc> Par still pays attention to body characters.",
 "        amc> Par should not mistake \"Par\" for part of the prefix.",
 "        amc> Par should not mistake \".\" for a suffix."
-        };
+        );
 
-        var result = LineReader.Compresuflen(lines, 0, 2, AlphaPointBodyChars, body: true, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 2, AlphaPointBodyChars, body: true, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(13, result.Prefix);
         Assert.Equal(0, result.Suffix);
@@ -543,9 +544,9 @@ public class CompresuflenTests
     public void Compresuflen_MinPrefix_SkipsKnownPrefix()
     {
         // minPrefix=2: начинаем сравнение с 3-го графема
-        var lines = new[] { "abXYZ", "abXUV" };
+        var segments = ToSegments("abXYZ", "abXUV");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 2, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 2, minSuffix: 0);
 
         Assert.Equal(3, result.Prefix); // "abX" — общий префикс после 2 = 3 графемы
     }
@@ -554,9 +555,9 @@ public class CompresuflenTests
     public void Compresuflen_MinSuffix_SkipsKnownSuffix()
     {
         // minSuffix=1: начинаем сравнение, отступив 1 графем от конца
-        var lines = new[] { "XYab", "ZWab" };
+        var segments = ToSegments("XYab", "ZWab");
         // Общий суффикс: "ab" = 2 графемы
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 1);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 1);
 
         Assert.Equal(2, result.Suffix); // "ab"
     }
@@ -569,9 +570,9 @@ public class CompresuflenTests
     public void Compresuflen_WithEmoji_CorrectGraphemeCount()
     {
         // Эмодзи — каждый считается как одна графема
-        var lines = new[] { "👋🌍abc", "👋🌍def" };
+        var segments = ToSegments("👋🌍abc", "👋🌍def");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         // "👋🌍abc" vs "👋🌍def" → общий префикс "👋🌍" = 2 графемы
         Assert.Equal(2, result.Prefix);
@@ -583,9 +584,9 @@ public class CompresuflenTests
         // "é" как e + combining acute (U+0301) — одна графема
         string eAcute1 = "e\u0301"; // é combining
         string eAcute2 = "e\u0301"; // é combining
-        var lines = new[] { eAcute1 + "abc", eAcute2 + "xyz" };
+        var segments = ToSegments(eAcute1 + "abc", eAcute2 + "xyz");
 
-        var result = LineReader.Compresuflen(lines, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 0, 1, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(1, result.Prefix); // одна графема "é"
     }
@@ -597,10 +598,10 @@ public class CompresuflenTests
     [Fact]
     public void Compresuflen_StartIndex_SkipsInitialLines()
     {
-        var lines = new[] { "different", "abcXY", "abcXZ" };
+        var segments = ToSegments("different", "abcXY", "abcXZ");
 
         // startIndex=1, endIndex=2 → обрабатываем только "abcXY" и "abcXZ"
-        var result = LineReader.Compresuflen(lines, 1, 2, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
+        var result = LineReader.Compresuflen(segments, 1, 2, EmptyBodyChars, body: false, minPrefix: 0, minSuffix: 0);
 
         Assert.Equal(4, result.Prefix); // "abcX"
     }
