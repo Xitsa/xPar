@@ -842,3 +842,203 @@ public class DelimitTests
         return (prop.Flags & LineFlags.Bodiless) != 0;
     }
 }
+
+// ============================================================
+// Тесты для MarkSuperf
+// ============================================================
+
+public class MarkSuperfTests
+{
+    // Helper: преобразует string[] в LineSegment[] с пустыми флагами
+    private static LineSegment[] ToSegments(params string[] lines)
+    {
+        return lines.Select(l => new LineSegment(l, new LineProp())).ToArray();
+    }
+
+    #region Базовые тесты
+
+    [Fact]
+    public void MarkSuperf_EmptyRange_NoChanges()
+    {
+        var segments = ToSegments("abc");
+
+        LineReader.MarkSuperf(segments, 1, 0);
+
+        Assert.Equal(LineFlags.None, segments[0].Prop.Flags);
+    }
+
+    [Fact]
+    public void MarkSuperf_SingleVacant_SuperfTrue()
+    {
+        // Один vacant сегмент (bodiless + Rc = " ")
+        var segments = new[]
+        {
+            new LineSegment("   ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 0);
+
+        Assert.Equal(LineFlags.Superf, segments[0].Prop.Flags & LineFlags.Superf);
+    }
+
+    [Fact]
+    public void MarkSuperf_SingleNonVacant_NoSuperf()
+    {
+        var segments = ToSegments("hello");
+
+        LineReader.MarkSuperf(segments, 0, 0);
+
+        Assert.Equal(LineFlags.None, segments[0].Prop.Flags & LineFlags.Superf);
+    }
+
+    #endregion
+
+    #region Vacant в начале/конце
+
+    [Fact]
+    public void MarkSuperf_VacantAtStart_SuperfTrue()
+    {
+        // Vacant в начале → все избыточные
+        var segments = new[]
+        {
+            new LineSegment("  ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+            new LineSegment("hello", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 1);
+
+        Assert.Equal(LineFlags.Superf, segments[0].Prop.Flags & LineFlags.Superf);
+    }
+
+    [Fact]
+    public void MarkSuperf_VacantAtEnd_SuperfTrue()
+    {
+        // Vacant в конце → все избыточные
+        var segments = new[]
+        {
+            new LineSegment("hello", new LineProp()),
+            new LineSegment("  ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 1);
+
+        Assert.Equal(LineFlags.Superf, segments[1].Prop.Flags & LineFlags.Superf);
+    }
+
+    [Fact]
+    public void MarkSuperf_MultipleVacantAtStart_AllSuperf()
+    {
+        // Несколько contiguous vacant в начале → все Superf
+        var segments = new[]
+        {
+            new LineSegment(" ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+            new LineSegment("  ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+            new LineSegment("   ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+            new LineSegment("hello", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 3);
+
+        Assert.Equal(LineFlags.Superf, segments[0].Prop.Flags & LineFlags.Superf);
+        Assert.Equal(LineFlags.Superf, segments[1].Prop.Flags & LineFlags.Superf);
+        Assert.Equal(LineFlags.Superf, segments[2].Prop.Flags & LineFlags.Superf);
+    }
+
+    #endregion
+
+    #region Vacant между non-vacant
+
+    [Fact]
+    public void MarkSuperf_SingleVacantBetweenNonVacant_NotSuperf()
+    {
+        // Одна vacant между двумя non-vacant → Superf = false (единственная в группе)
+        var segments = new[]
+        {
+            new LineSegment("hello", new LineProp()),
+            new LineSegment(" ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),
+            new LineSegment("world", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 2);
+
+        Assert.Equal(LineFlags.None, segments[1].Prop.Flags & LineFlags.Superf);
+    }
+
+    [Fact]
+    public void MarkSuperf_TwoVacantBetweenNonVacant_BestNotSuperf()
+    {
+        // Две vacant между non-vacant: лучшая (меньше non-space) → не Superf
+        var segments = new[]
+        {
+            new LineSegment("hello", new LineProp()),
+            new LineSegment(" x ", new LineProp(flags: LineFlags.Bodiless, rc: " ")), // 1 non-space
+            new LineSegment("  x  ", new LineProp(flags: LineFlags.Bodiless, rc: " ")), // 1 non-space
+            new LineSegment("world", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 3);
+
+        // Первая vacant (tie-break: первая выбирается) → не Superf
+        Assert.Equal(LineFlags.None, segments[1].Prop.Flags & LineFlags.Superf);
+        Assert.Equal(LineFlags.Superf, segments[2].Prop.Flags & LineFlags.Superf);
+    }
+
+    #endregion
+
+    #region Несколько групп
+
+    [Fact]
+    public void MarkSuperf_MultipleGroups_CorrectMarking()
+    {
+        // non-vacant, vacant, vacant, non-vacant, vacant, non-vacant
+        // Группа 1: vacant[1],vacant[2] → лучшая не Superf
+        // Группа 2: vacant[4] → одиночная между non-vacant → не Superf
+        var segments = new[]
+        {
+            new LineSegment("hello", new LineProp()),
+            new LineSegment(" ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),     // 0 non-space
+            new LineSegment(" x ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),   // 1 non-space
+            new LineSegment("world", new LineProp()),
+            new LineSegment("  ", new LineProp(flags: LineFlags.Bodiless, rc: " ")),    // 0 non-space
+            new LineSegment("end", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 5);
+
+        Assert.Equal(LineFlags.None, segments[1].Prop.Flags & LineFlags.Superf);   // лучшая в группе 1
+        Assert.Equal(LineFlags.Superf, segments[2].Prop.Flags & LineFlags.Superf);
+        Assert.Equal(LineFlags.None, segments[4].Prop.Flags & LineFlags.Superf);   // одиночная
+    }
+
+    #endregion
+
+    #region Non-vacant не затрагиваются
+
+    [Fact]
+    public void MarkSuperf_BodilessNotVacant_NotAffected()
+    {
+        // Bodiless но rc != " " → не vacant → Superf не затрагивается
+        var segments = new[]
+        {
+            new LineSegment("---", new LineProp(flags: LineFlags.Bodiless, rc: "-")),
+            new LineSegment("hello", new LineProp()),
+        };
+
+        LineReader.MarkSuperf(segments, 0, 1);
+
+        Assert.Equal(LineFlags.None, segments[0].Prop.Flags & LineFlags.Superf);
+    }
+
+    [Fact]
+    public void MarkSuperf_NormalLines_NotAffected()
+    {
+        // Обычные строки без Bodiless → Superf не затрагивается
+        var segments = ToSegments("hello", "world", "test");
+
+        LineReader.MarkSuperf(segments, 0, 2);
+
+        Assert.All(segments, s => Assert.Equal(LineFlags.None, s.Prop.Flags & LineFlags.Superf));
+    }
+
+    #endregion
+}

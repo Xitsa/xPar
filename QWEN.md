@@ -55,6 +55,13 @@
 - `xParLib.CompresuflenResult` — результат вычисления comprelen/comsuflen (поля Prefix, Suffix)
 - `LineReader.Compresuflen(...)` — вычисление общего префикса и суффикса (аналог `compresuflen()`)
   - Сигнатура: `Compresuflen(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, Charset bodyChars, bool body, int minPrefix, int minSuffix)`
+- `LineReader.Delimit(...)` — определение бестелесных строк и разметка свойств (аналог `delimit()`)
+  - Сигнатура: `Delimit(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, Charset bodyChars, int repeat, bool body, bool div, int minPrefix, int minSuffix)`
+  - Внутри вызывает `Compresuflen`, затем рекурсивно обрабатывает подблоки между bodiless строками
+- `LineReader.MarkSuperf(...)` — разметка избыточных (superfluous) строк (аналог `marksuperf()`)
+  - Сигнатура: `MarkSuperf(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex)`
+  - Требует, чтобы `L_BODILESS` был уже установлен (после вызова `Delimit`)
+- Вспомогательные методы (private): `IsBodiless`, `IsInserted`, `IsVacant`, `GetGraphemes`, `CountGraphemes`, `CountNonSpaceGraphemes`
 
 ## Основные алгоритмы оригинала (par.doc)
 - **comprelen** — длина общего префикса строк

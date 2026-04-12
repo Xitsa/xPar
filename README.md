@@ -55,6 +55,8 @@ xpar/
 - Класс для чтения и аннотирования строк (аналог `readlines()` из par.c)
 - Метод `ReadLines(...)` — чтение строк до EOF/protected/blank line
 - Статический метод `Compresuflen(...)` — вычисление comprelen/comsuflen (аналог `compresuflen()`)
+- Статический метод `Delimit(...)` — определение бестелесных строк, разметка свойств (аналог `delimit()`)
+- Статический метод `MarkSuperf(...)` — разметка избыточных строк (аналог `marksuperf()`)
 - Типы: `LineProp`, `LineSegment`, `ReadLinesResult`, `CompresuflenResult`
 
 ### xParLib/xParLib.csproj

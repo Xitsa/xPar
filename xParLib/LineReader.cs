@@ -688,5 +688,99 @@ namespace xParLib
         {
             return (prop.Flags & LineFlags.Inserted) != 0;
         }
+
+        /// <summary>
+        /// Проверить: сегмент помечен как vacant (бестелесный + rc = " ").
+        /// </summary>
+        private static bool IsVacant(LineProp prop)
+        {
+            return IsBodiless(prop) && prop.Rc == " ";
+        }
+
+        //
+        // MarkSuperf — аналог marksuperf() из par.c
+        //
+
+        /// <summary>
+        /// Размечает избыточные (superfluous) строки в сегменте.
+        /// Аналог marksuperf() из par.c (строки 631–660).
+        /// Требует, чтобы L_BODILESS был уже установлен (после вызова Delimit).
+        /// </summary>
+        /// <param name="segments">Массив сегментов строк (LineSegment)</param>
+        /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
+        /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
+        public static void MarkSuperf(
+            IReadOnlyList<LineSegment> segments,
+            int startIndex,
+            int endIndex)
+        {
+            if (segments == null) throw new ArgumentNullException(nameof(segments));
+            if (startIndex < 0 || startIndex > endIndex + 1 || endIndex >= segments.Count)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // par.c 643-645: пометить все vacant как SUPERF
+            for (int lineIdx = startIndex; lineIdx <= endIndex; lineIdx++)
+            {
+                if (IsVacant(segments[lineIdx].Prop))
+                {
+                    var prop = segments[lineIdx].Prop;
+                    prop.Flags |= LineFlags.Superf;
+                    segments[lineIdx].Prop = prop;
+                }
+            }
+
+            // par.c 647-658: определение лучшей vacant в каждой группе
+            bool inBody = false;
+            int minNonSpace = 0;
+            int bestIdx = -1; // вместо mprop = &dummy
+
+            for (int lineIdx = startIndex; lineIdx <= endIndex; lineIdx++)
+            {
+                if (IsVacant(segments[lineIdx].Prop))
+                {
+                    // par.c 651-652: подсчёт non-space символов
+                    int nonSpaceCount = CountNonSpaceGraphemes(segments[lineIdx].Line);
+
+                    // par.c 653-655: если в теле или меньше минимума — новый лучший
+                    if (inBody || nonSpaceCount < minNonSpace)
+                    {
+                        minNonSpace = nonSpaceCount;
+                        bestIdx = lineIdx;
+                    }
+                    inBody = false;
+                }
+                else
+                {
+                    // par.c 657: снятие SUPERF с лучшей vacant из предыдущей группы
+                    if (!inBody && bestIdx >= 0)
+                    {
+                        var prop = segments[bestIdx].Prop;
+                        prop.Flags &= ~LineFlags.Superf;
+                        segments[bestIdx].Prop = prop;
+                    }
+                    inBody = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Подсчитать количество не-пробельных графем в строке.
+        /// Аналог цикла "for (p = *line; *p; ++p) if (*p != ' ') ++num;" из par.c 651.
+        /// </summary>
+        private static int CountNonSpaceGraphemes(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+                return 0;
+
+            int count = 0;
+            var enumerator = StringInfo.GetTextElementEnumerator(line);
+            while (enumerator.MoveNext())
+            {
+                string grapheme = enumerator.GetTextElement();
+                if (grapheme != " ")
+                    count++;
+            }
+            return count;
+        }
     }
 }
