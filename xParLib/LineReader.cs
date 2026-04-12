@@ -70,6 +70,11 @@ namespace xParLib
     }
 
     /// <summary>
+    /// Результат вычисления comprelen и comsuflen (в графемах).
+    /// </summary>
+    public readonly record struct CompresuflenResult(int Prefix, int Suffix);
+
+    /// <summary>
     /// Класс для чтения и аннотирования строк (аналог readlines() из par.c).
     /// </summary>
     public class LineReader
@@ -318,6 +323,199 @@ namespace xParLib
             while (i < len && a[i] == b[i])
                 i++;
             return i;
+        }
+
+        //
+        // Compresuflen — аналог compresuflen() из par.c
+        //
+
+        /// <summary>
+        /// Получить список графем-кластеров строки.
+        /// </summary>
+        private static IReadOnlyList<string> GetGraphemes(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+                return Array.Empty<string>();
+
+            var list = new List<string>();
+            var enumerator = StringInfo.GetTextElementEnumerator(line);
+            while (enumerator.MoveNext())
+                list.Add(enumerator.GetTextElement());
+            return list.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Подсчитать количество графем в строке.
+        /// </summary>
+        private static int CountGraphemes(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+                return 0;
+
+            int count = 0;
+            var enumerator = StringInfo.GetTextElementEnumerator(line);
+            while (enumerator.MoveNext())
+                count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Вычисляет comprelen и comsuflen для набора строк.
+        /// Аналог compresuflen() из par.c (строки 481–540).
+        /// </summary>
+        /// <param name="lines">Массив строк</param>
+        /// <param name="startIndex">Индекс первой строки для обработки (включительно)</param>
+        /// <param name="endIndex">Индекс последней строки для обработки (включительно)</param>
+        /// <param name="bodyChars">Набор body-символов</param>
+        /// <param name="body">Флаг режима body (false = 0, true = 1), соответствует ParOptions.Body</param>
+        /// <param name="minPrefix">Минимальная известная длина префикса (в графемах)</param>
+        /// <param name="minSuffix">Минимальная известная длина суффикса (в графемах)</param>
+        /// <returns>CompresuflenResult с полями Prefix (comprelen) и Suffix (comsuflen) в графемах</returns>
+        public static CompresuflenResult Compresuflen(
+            IReadOnlyList<string> lines,
+            int startIndex,
+            int endIndex,
+            Charset bodyChars,
+            bool body,
+            int minPrefix,
+            int minSuffix)
+        {
+            if (lines == null) throw new ArgumentNullException(nameof(lines));
+            if (startIndex < 0 || startIndex > endIndex || endIndex >= lines.Count)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // Базовая строка — lines[startIndex]
+            var baseGraphemes = GetGraphemes(lines[startIndex]);
+            int totalBase = baseGraphemes.Count;
+
+            // ===== Часть A: вычисление префикса (comprelen) =====
+            // par.c 492-493: start = *lines; knownstart = start + pre; end = knownstart;
+            int knownStart = minPrefix;
+            int end = knownStart;
+
+            // par.c 494-497: найти конец «тела» базовой строки
+            if (body)
+            {
+                // body=1: идти до конца строки
+                end = totalBase;
+            }
+            else
+            {
+                // body=0: идти до первого body-символа
+                while (end < totalBase && !bodyChars.IsMember(baseGraphemes[end]))
+                    end++;
+            }
+
+            // par.c 498-502: сузить end по всем строкам
+            for (int lineIdx = startIndex + 1; lineIdx <= endIndex; lineIdx++)
+            {
+                var g = GetGraphemes(lines[lineIdx]);
+                int totalG = g.Count;
+
+                int p1 = knownStart; // индекс в baseGraphemes
+                int p2 = minPrefix;   // индекс в g
+
+                while (p1 < end && p2 < totalG && baseGraphemes[p1] == g[p2])
+                {
+                    p1++;
+                    p2++;
+                }
+                end = p1;
+            }
+
+            // par.c 503-510: корректировка для body=1
+            if (body)
+            {
+                // Отступить от end до knownStart, ища последний non-space non-body символ
+                for (int p1 = end; p1 > knownStart;)
+                {
+                    p1--;
+                    string gm = baseGraphemes[p1];
+                    if (gm != " ")
+                    {
+                        if (bodyChars.IsMember(gm))
+                            end = p1; // par: end = p1 (НЕ включает body-символ)
+                        else
+                            break; // non-body — выходим, end уже за ним
+                    }
+                }
+            }
+
+            int prefix = end; // par.c 511: *ppre = end - start; (start = 0)
+
+            // ===== Часть B: вычисление суффикса (comsuflen) =====
+            // par.c 513-515
+            int bKnownStart = prefix; // индекс графема после префикса
+            int bEnd = totalBase;     // конец базовой строки (количество графем)
+            int bKnownEnd = bEnd - minSuffix;
+
+            int bStart;
+            if (body)
+            {
+                // body=1: start = knownStart
+                bStart = bKnownStart;
+            }
+            else
+            {
+                // body=0: идти назад от knownEnd, пропуская non-body символы
+                bStart = bKnownEnd;
+                while (bStart > bKnownStart)
+                {
+                    // Проверяем графем перед bStart
+                    string gm = baseGraphemes[bStart - 1];
+                    if (!bodyChars.IsMember(gm))
+                        bStart--;
+                    else
+                        break;
+                }
+            }
+
+            // par.c 521-527: сузить start по всем строкам
+            for (int lineIdx = startIndex + 1; lineIdx <= endIndex; lineIdx++)
+            {
+                var g = GetGraphemes(lines[lineIdx]);
+                int totalG = g.Count;
+
+                int knownstart2 = prefix; // индекс после префикса в текущей строке
+                // p1 = bKnownEnd, p2 = конец строки - minSuffix
+                int p1 = bKnownEnd;
+                int p2 = totalG - minSuffix;
+
+                while (p1 > bStart && p2 > knownstart2 && g[p2 - 1] == baseGraphemes[p1 - 1])
+                {
+                    p1--;
+                    p2--;
+                }
+                bStart = p1;
+            }
+
+            // par.c 528-535: корректировка
+            if (body)
+            {
+                // Идти вперёд от bStart, пока space или body-символ
+                int p1 = bStart;
+                while (bStart < bKnownEnd &&
+                       (baseGraphemes[bStart] == " " || bodyChars.IsMember(baseGraphemes[bStart])))
+                {
+                    bStart++;
+                }
+                // Если продвинулись и последний был пробел — отступить на один
+                if (bStart > p1 && baseGraphemes[bStart - 1] == " ")
+                    bStart--;
+            }
+            else
+            {
+                // Пропустить двойные пробелы в начале суффикса
+                while (bEnd - bStart >= 2 &&
+                       baseGraphemes[bStart] == " " && baseGraphemes[bStart + 1] == " ")
+                {
+                    bStart++;
+                }
+            }
+
+            int suffix = bEnd - bStart; // par.c 536: *psuf = end - start;
+
+            return new CompresuflenResult(prefix, suffix);
         }
     }
 }

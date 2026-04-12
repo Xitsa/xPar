@@ -37,14 +37,25 @@ xpar/
 ### xParLib/StringTransformer.cs
 - Публичный класс `StringTransformer` с логикой преобразования строк
 - Публичный метод `Transform(IReadOnlyList<string>)` для обработки списка строк
-- Приватный метод `TransformLine` для обработки отдельной строки
-- Приватный метод `CountGraphemes` для подсчёта ширины графем в словах
 
 ### xParLib/ParOptions.cs
 - Публичный класс `ParOptions` для хранения параметров форматирования
 - Статический метод `Parse(string[] args)` для разбора аргументов командной строки
 - Поддержка всех оригинальных параметров `par` (целочисленные, булевы, наборы символов)
 - Значения по умолчанию соответствуют оригинальному `par` (width=72, tab=1, и т.д.)
+
+### xParLib/Charset.cs
+- Класс для работы с наборами символов (charset syntax оригинала)
+- Поддержка escape-последовательностей: `_A`, `_a`, `_0`, `_S`, `_xHH` и др.
+- Метод `Parse(string)` — создание набора из строки
+- Метод `IsMember(string)` — проверка принадлежности графем-кластера
+- Операции объединения (`Union`) и разности (`Difference`) множеств
+
+### xParLib/LineReader.cs
+- Класс для чтения и аннотирования строк (аналог `readlines()` из par.c)
+- Метод `ReadLines(...)` — чтение строк до EOF/protected/blank line
+- Статический метод `Compresuflen(...)` — вычисление comprelen/comsuflen (аналог `compresuflen()`)
+- Типы: `LineProp`, `LineSegment`, `ReadLinesResult`, `CompresuflenResult`
 
 ### xParLib/xParLib.csproj
 - Файл проекта библиотеки .NET SDK
