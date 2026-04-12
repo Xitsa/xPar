@@ -75,6 +75,15 @@ namespace xParLib
     public readonly record struct CompresuflenResult(int Prefix, int Suffix);
 
     /// <summary>
+    /// Результат вычисления аффиксов IP.
+    /// </summary>
+    public readonly record struct SetAffixesResult(
+        int Prefix,
+        int Suffix,
+        int AugmentedFallbackPre,
+        int FallbackSuf);
+
+    /// <summary>
     /// Класс для чтения и аннотирования строк (аналог readlines() из par.c).
     /// </summary>
     public class LineReader
@@ -781,6 +790,86 @@ namespace xParLib
                     count++;
             }
             return count;
+        }
+
+        //
+        // SetAffixes — аналог setaffixes() из par.c
+        //
+
+        /// <summary>
+        /// Вычисляет итоговые значения префикса и суффикса для IP.
+        /// Аналог setaffixes() из par.c (строки 664–696).
+        /// </summary>
+        /// <param name="segments">Массив сегментов строк (LineSegment)</param>
+        /// <param name="startIndex">Индекс первого сегмента IP (включительно)</param>
+        /// <param name="endIndex">Индекс последнего сегмента IP (включительно)</param>
+        /// <param name="bodyChars">Набор body-символов</param>
+        /// <param name="quoteChars">Набор quote-символов</param>
+        /// <param name="hang">Пропуск первых hang строк при вычислении</param>
+        /// <param name="body">Флаг режима body (false = 0, true = 1)</param>
+        /// <param name="quote">Флаг quote (false = 0, true = 1)</param>
+        /// <param name="prefix">Входной префикс (если HasValue, используется как есть)</param>
+        /// <param name="suffix">Входной суффикс (если HasValue, используется как есть)</param>
+        /// <returns>SetAffixesResult с итоговыми значениями</returns>
+        public static SetAffixesResult SetAffixes(
+            IReadOnlyList<LineSegment> segments,
+            int startIndex,
+            int endIndex,
+            Charset bodyChars,
+            Charset quoteChars,
+            int hang,
+            bool body,
+            bool quote,
+            int? prefix,
+            int? suffix)
+        {
+            if (segments == null) throw new ArgumentNullException(nameof(segments));
+            if (startIndex < 0 || startIndex > endIndex || endIndex >= segments.Count)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            // par.c 678: numin = endline - inlines;
+            int numin = endIndex - startIndex + 1;
+
+            // par.c 680-681: compresuflen если prefix или suffix не заданы
+            int computedPrefix = 0, computedSuffix = 0;
+            if ((!prefix.HasValue || !suffix.HasValue) && numin > hang + 1)
+            {
+                var csResult = Compresuflen(segments, startIndex + hang, endIndex, bodyChars, body, 0, 0);
+                computedPrefix = csResult.Prefix;
+                computedSuffix = csResult.Suffix;
+            }
+
+            // par.c 683-684: augmented fallback prelen
+            int fallbackPre = segments[startIndex].Prop.P;
+            int augmentedFallbackPre;
+
+            if (numin == 1 && quote)
+            {
+                // Добавить quote-символы после fallbackPre
+                var graphemes = GetGraphemes(segments[startIndex].Line);
+                int pos = fallbackPre;
+                while (pos < graphemes.Count && quoteChars.IsMember(graphemes[pos]))
+                    pos++;
+                augmentedFallbackPre = pos;
+            }
+            else
+            {
+                augmentedFallbackPre = fallbackPre;
+            }
+
+            // par.c 688: fallback suflen
+            int fallbackSuf = segments[startIndex].Prop.S;
+
+            // par.c 690-696: финальные значения
+            int finalPrefix = prefix.HasValue
+                ? prefix.Value
+                : (numin > hang + 1 ? computedPrefix : augmentedFallbackPre);
+
+            int finalSuffix = suffix.HasValue
+                ? suffix.Value
+                : (numin > hang + 1 ? computedSuffix : fallbackSuf);
+
+            return new SetAffixesResult(finalPrefix, finalSuffix, augmentedFallbackPre, fallbackSuf);
         }
     }
 }

@@ -1042,3 +1042,168 @@ public class MarkSuperfTests
 
     #endregion
 }
+
+// ============================================================
+// Тесты для SetAffixes
+// ============================================================
+
+public class SetAffixesTests
+{
+    private static Charset EmptyBodyChars => Charset.Parse("");
+    private static Charset DefaultQuoteChars => Charset.Parse("> ");
+    private static Charset AlphaBodyChars => Charset.Parse("_A_a");
+
+    // Helper: преобразует string[] в LineSegment[] с заданными P и S
+    private static LineSegment[] ToSegmentsWithProps(int p, int s, params string[] lines)
+    {
+        return lines.Select(l => new LineSegment(l, new LineProp(p: p, s: s))).ToArray();
+    }
+
+    #region Базовые тесты
+
+    [Fact]
+    public void SetAffixes_PrefixSuffixProvided_ReturnsAsIs()
+    {
+        // prefix/suffix заданы → возвращаем их, fallback не считается
+        var segments = ToSegmentsWithProps(3, 2, "hello");
+
+        var result = LineReader.SetAffixes(segments, 0, 0, EmptyBodyChars, EmptyBodyChars,
+            hang: 0, body: false, quote: false, prefix: 5, suffix: 7);
+
+        Assert.Equal(5, result.Prefix);
+        Assert.Equal(7, result.Suffix);
+    }
+
+    [Fact]
+    public void SetAffixes_SingleLine_UnsetPrefixSuffix_UsesFallback()
+    {
+        // Одна строка, prefix/suffix = null → fallback из Prop
+        var segments = ToSegmentsWithProps(3, 2, "hello");
+
+        var result = LineReader.SetAffixes(segments, 0, 0, EmptyBodyChars, EmptyBodyChars,
+            hang: 0, body: false, quote: false, prefix: null, suffix: null);
+
+        Assert.Equal(3, result.Prefix);
+        Assert.Equal(2, result.Suffix);
+        Assert.Equal(3, result.AugmentedFallbackPre);
+        Assert.Equal(2, result.FallbackSuf);
+    }
+
+    [Fact]
+    public void SetAffixes_TwoLines_UnsetPrefixSuffix_UsesCompresuflen()
+    {
+        // Две строки, numin=2 > hang+1=1 → compresuflen
+        var segments = ToSegmentsWithProps(0, 0, "abcdef", "abcxyz");
+
+        var result = LineReader.SetAffixes(segments, 0, 1, EmptyBodyChars, EmptyBodyChars,
+            hang: 0, body: false, quote: false, prefix: null, suffix: null);
+
+        Assert.Equal(3, result.Prefix);  // "abc"
+        Assert.Equal(0, result.Suffix);  // нет общего суффикса
+    }
+
+    #endregion
+
+    #region Тесты с hang
+
+    [Fact]
+    public void SetAffixes_Hang_SkipsFirstLines()
+    {
+        // Три строки, hang=1 → compresuflen строк [1..2]
+        var segments = ToSegmentsWithProps(0, 0, "different", "abcXY", "abcXZ");
+
+        var result = LineReader.SetAffixes(segments, 0, 2, EmptyBodyChars, EmptyBodyChars,
+            hang: 1, body: false, quote: false, prefix: null, suffix: null);
+
+        Assert.Equal(4, result.Prefix); // "abcX"
+    }
+
+    [Fact]
+    public void SetAffixes_HangTooLarge_UsesFallback()
+    {
+        // Две строки, hang=1 → numin=2, hang+1=2 → numin <= hang+1 → fallback
+        var segments = ToSegmentsWithProps(5, 3, "abc", "def");
+
+        var result = LineReader.SetAffixes(segments, 0, 1, EmptyBodyChars, EmptyBodyChars,
+            hang: 1, body: false, quote: false, prefix: null, suffix: null);
+
+        Assert.Equal(5, result.Prefix); // fallback
+        Assert.Equal(3, result.Suffix);
+    }
+
+    #endregion
+
+    #region Тесты quote
+
+    [Fact]
+    public void SetAffixes_QuoteAugmented_AddsQuoteChars()
+    {
+        // Одна строка, quote=true, quote-символы после fallbackPre
+        var segments = new[]
+        {
+            new LineSegment("> hello", new LineProp(p: 1, s: 0)), // fallbackPre=1 (">"), потом quote-символы
+        };
+        var quoteChars = Charset.Parse(">");
+
+        var result = LineReader.SetAffixes(segments, 0, 0, EmptyBodyChars, quoteChars,
+            hang: 0, body: false, quote: true, prefix: null, suffix: null);
+
+        // fallbackPre=1, потом графем[1]=" " (не quote), так что augmented=1
+        Assert.Equal(1, result.AugmentedFallbackPre);
+        Assert.Equal(1, result.Prefix);
+    }
+
+    [Fact]
+    public void SetAffixes_QuoteFalse_NoAugmentation()
+    {
+        // Одна строка, quote=false → augmented = fallbackPre
+        var segments = new[]
+        {
+            new LineSegment("> hello", new LineProp(p: 1, s: 0)),
+        };
+        var quoteChars = Charset.Parse(">");
+
+        var result = LineReader.SetAffixes(segments, 0, 0, EmptyBodyChars, quoteChars,
+            hang: 0, body: false, quote: false, prefix: null, suffix: null);
+
+        Assert.Equal(1, result.AugmentedFallbackPre);
+        Assert.Equal(1, result.Prefix);
+    }
+
+    [Fact]
+    public void SetAffixes_QuoteTrue_MultipleQuoteChars()
+    {
+        // Одна строка, quote=true, несколько quote-символов после fallbackPre
+        var segments = new[]
+        {
+            new LineSegment(">>hello", new LineProp(p: 1, s: 0)),
+        };
+        var quoteChars = Charset.Parse(">");
+
+        var result = LineReader.SetAffixes(segments, 0, 0, EmptyBodyChars, quoteChars,
+            hang: 0, body: false, quote: true, prefix: null, suffix: null);
+
+        // fallbackPre=1, графемы[1]='>', графемы[2]='h'(не quote) → augmented=2
+        Assert.Equal(2, result.AugmentedFallbackPre);
+        Assert.Equal(2, result.Prefix);
+    }
+
+    #endregion
+
+    #region Тесты body
+
+    [Fact]
+    public void SetAffixes_BodyTrue_CompresuflenWithBody()
+    {
+        // Две строки, body=true → compresuflen с учётом body-символов
+        var segments = ToSegmentsWithProps(0, 0, "> text1 .", "> text2 .");
+
+        var result = LineReader.SetAffixes(segments, 0, 1, AlphaBodyChars, EmptyBodyChars,
+            hang: 0, body: true, quote: false, prefix: null, suffix: null);
+
+        // body=true: префикс до последнего non-body → "> " = 2
+        Assert.Equal(2, result.Prefix);
+    }
+
+    #endregion
+}

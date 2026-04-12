@@ -57,7 +57,8 @@ xpar/
 - Статический метод `Compresuflen(...)` — вычисление comprelen/comsuflen (аналог `compresuflen()`)
 - Статический метод `Delimit(...)` — определение бестелесных строк, разметка свойств (аналог `delimit()`)
 - Статический метод `MarkSuperf(...)` — разметка избыточных строк (аналог `marksuperf()`)
-- Типы: `LineProp`, `LineSegment`, `ReadLinesResult`, `CompresuflenResult`
+- Статический метод `SetAffixes(...)` — вычисление финальных префикса и суффикса IP (аналог `setaffixes()`)
+- Типы: `LineProp`, `LineSegment`, `ReadLinesResult`, `CompresuflenResult`, `SetAffixesResult`
 
 ### xParLib/xParLib.csproj
 - Файл проекта библиотеки .NET SDK

@@ -61,6 +61,10 @@
 - `LineReader.MarkSuperf(...)` — разметка избыточных (superfluous) строк (аналог `marksuperf()`)
   - Сигнатура: `MarkSuperf(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex)`
   - Требует, чтобы `L_BODILESS` был уже установлен (после вызова `Delimit`)
+- `LineReader.SetAffixes(...)` — вычисление финальных префикса и суффикса IP (аналог `setaffixes()`)
+  - Сигнатура: `SetAffixes(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, Charset bodyChars, Charset quoteChars, int hang, bool body, bool quote, int? prefix, int? suffix)`
+  - Возвращает `SetAffixesResult` (Prefix, Suffix, AugmentedFallbackPre, FallbackSuf)
+  - Вызывает `Compresuflen` при необходимости, учитывает `hang` и `quote` для augmented fallback
 - Вспомогательные методы (private): `IsBodiless`, `IsInserted`, `IsVacant`, `GetGraphemes`, `CountGraphemes`, `CountNonSpaceGraphemes`
 
 ## Основные алгоритмы оригинала (par.doc)
