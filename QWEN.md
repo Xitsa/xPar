@@ -73,6 +73,7 @@
     - Сигнатура: `ExtractWords(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, int prefix, int suffix, int width, Charset terminalChars, bool cap, bool guess, bool report)`
     - Возвращает `ExtractWordsResult`
   - `ReformatModule.Reformat(...)` — главный метод форматирования (заглушка, реализуется в следующих шагах)
+  - `ReformatModule.SimpleBreaks(List<Word>, int L, bool last)` — выбор разрывов строк, максимизация кратчайшей строки (аналог simplebreaks(), reformat.c строки 98–136)
 - Вспомогательные методы (private в ReformatModule): `GetGraphemeWidth`, `CalcVisualWidth`, `GetSuffix`, `CalcGraphemeWidthRange`, `IsAlphanumeric`, `IsCurious`, `IsCapitalized`, `SplitWord`
 - Вспомогательные методы (private в LineReader): `IsBodiless`, `IsInserted`, `IsVacant`, `CountGraphemes`, `CountNonSpaceGraphemes`
 - Вспомогательные методы (public в LineReader): `GetGraphemes(string)` — получение списка графем-кластеров строки

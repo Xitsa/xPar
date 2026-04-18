@@ -295,6 +295,78 @@ namespace xParLib
         }
 
         //
+        // SimpleBreaks — выбор разрывов строк (максимизация кратчайшей строки)
+        //
+
+        /// <summary>
+        /// Выбирает разрывы строк, максимизируя длину кратчайшей строки.
+        /// </summary>
+        /// <remarks>
+        /// Аналог simplebreaks() из reformat.c (строки 98–136).
+        /// Использует динамическое программирование: идёт с конца к началу,
+        /// для каждого слова находит оптимальный разрыв.
+        /// </remarks>
+        /// <param name="words">Список слов (изменяется: поля Score и NextLine).</param>
+        /// <param name="L">Максимальная длина строки.</param>
+        /// <param name="last">Учитывать ли последнюю строку при расчёте.</param>
+        /// <returns>
+        /// Длина кратчайшей строки; -1 если слово шире L; L если слов нет.
+        /// </returns>
+        public static int SimpleBreaks(List<Word> words, int L, bool last)
+        {
+            if (words.Count == 0) return L;
+
+            int n = words.Count;
+
+            // Фаза 1: инициализация хвоста (с конца к началу)
+            // Все слова, которые помещаются на одну строку с конца
+            int idx = n - 1;
+            int linelen = words[idx].Width;
+
+            while (idx >= 0 && linelen <= L)
+            {
+                words[idx].Score = last ? linelen : L;
+                words[idx].NextLine = null;
+
+                // Переход к предыдущему слову
+                idx--;
+                if (idx < 0) break;
+
+                // Добавляем: shifted-пробел + обычный пробел + ширина предыдущего слова
+                linelen += (words[idx + 1].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0);
+                linelen += 1 + words[idx].Width;
+            }
+
+            // Фаза 2: основной DP для оставшихся слов
+            while (idx >= 0)
+            {
+                words[idx].Score = -1;
+
+                linelen = words[idx].Width;
+                int j = idx + 1;
+
+                while (j < n && linelen <= L)
+                {
+                    int score = words[j].Score;
+                    if (linelen < score) score = linelen;
+
+                    if (score >= words[idx].Score)
+                    {
+                        words[idx].NextLine = j;
+                        words[idx].Score = score;
+                    }
+
+                    linelen += 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                    j++;
+                }
+
+                idx--;
+            }
+
+            return words[0].Score;
+        }
+
+        //
         // Вспомогательные методы
         //
 
