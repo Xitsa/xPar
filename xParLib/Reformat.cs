@@ -6,7 +6,8 @@ namespace xParLib
     /// <summary>
     /// Реализация переноса логики форматирования. Функционал будет реализован в следующих шагах.
     /// </summary>
-    public static class Reformat
+    /// <remarks>Аналог файла reformat.c оригинального par (Par 1.53.0).</remarks>
+    public static class ReformatModule
     {
         /// <summary>
         /// Переформатирует входные сегменты абзаца в отформатированный набор строк согласно

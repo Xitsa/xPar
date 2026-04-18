@@ -6,8 +6,17 @@ using System.Text;
 
 namespace xParLib
 {
+    /// <summary>
+    /// Главный класс преобразования строк. Содержит публичный метод <see cref="Transform"/>
+    /// для переформатирования входных строк абзаца.
+    /// </summary>
     public class StringTransformer
     {
+        /// <summary>
+        /// Преобразует входные строки согласно логике форматирования.
+        /// </summary>
+        /// <param name="lines">Входные строки для преобразования.</param>
+        /// <returns>Результат преобразования в виде списка строк.</returns>
         public IReadOnlyList<string> Transform(IReadOnlyList<string> lines)
         {
             return lines.Select(TransformLine).ToArray();

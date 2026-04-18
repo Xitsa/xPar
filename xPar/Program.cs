@@ -6,10 +6,17 @@ using xParLib;
 
 namespace xpar
 {
+    /// <summary>
+    /// Точка входа консольного приложения xpar — фильтр для переформатирования абзацев.
+    /// </summary>
     class Program
     {
         private const string Version = "xpar 1.0.0";
 
+        /// <summary>
+        /// Главный метод приложения: разбор аргументов, чтение stdin, преобразование и вывод в stdout.
+        /// </summary>
+        /// <param name="args">Аргументы командной строки.</param>
         static void Main(string[] args)
         {
             Console.InputEncoding = Encoding.UTF8;

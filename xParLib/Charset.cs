@@ -6,8 +6,8 @@ namespace xParLib
 {
     /// <summary>
     /// Флаги классов символов для Charset.
-    /// Основано на оригинальных CS_* флагах из charset.c par.
     /// </summary>
+    /// <remarks>Аналог CS_* флагов из charset.c оригинального par (Par 1.53.0).</remarks>
     [Flags]
     public enum CharsetFlag
     {
