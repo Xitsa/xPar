@@ -91,6 +91,7 @@ namespace xParLib
         /// <summary>
         /// Читает строки из входного массива до EOF, protected line или blank line.
         /// </summary>
+        /// <remarks>Аналог readlines() из par.c (строки 87–93).</remarks>
         public ReadLinesResult ReadLines(
             IReadOnlyList<string> inputLines,
             int startIndex,
@@ -370,8 +371,8 @@ namespace xParLib
 
         /// <summary>
         /// Вычисляет comprelen и comsuflen для набора строк.
-        /// Аналог compresuflen() из par.c (строки 481–540).
         /// </summary>
+        /// <remarks>Аналог compresuflen() из par.c (строки 481–540).</remarks>
         /// <param name="segments">Массив сегментов строк (LineSegment)</param>
         /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
         /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
@@ -533,8 +534,8 @@ namespace xParLib
 
         /// <summary>
         /// Определяет бестелесные строки и размечает свойства сегментов.
-        /// Аналог delimit() из par.c (строки 544–628).
         /// </summary>
+        /// <remarks>Аналог delimit() из par.c (строки 544–628).</remarks>
         /// <param name="segments">Массив сегментов строк (LineSegment)</param>
         /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
         /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
@@ -712,9 +713,9 @@ namespace xParLib
 
         /// <summary>
         /// Размечает избыточные (superfluous) строки в сегменте.
-        /// Аналог marksuperf() из par.c (строки 631–660).
         /// Требует, чтобы L_BODILESS был уже установлен (после вызова Delimit).
         /// </summary>
+        /// <remarks>Аналог marksuperf() из par.c (строки 631–660).</remarks>
         /// <param name="segments">Массив сегментов строк (LineSegment)</param>
         /// <param name="startIndex">Индекс первого сегмента для обработки (включительно)</param>
         /// <param name="endIndex">Индекс последнего сегмента для обработки (включительно)</param>
@@ -774,8 +775,8 @@ namespace xParLib
 
         /// <summary>
         /// Подсчитать количество не-пробельных графем в строке.
-        /// Аналог цикла "for (p = *line; *p; ++p) if (*p != ' ') ++num;" из par.c 651.
         /// </summary>
+        /// <remarks>Аналог цикла "for (p = *line; *p; ++p) if (*p != ' ') ++num;" из par.c 651.</remarks>
         private static int CountNonSpaceGraphemes(string line)
         {
             if (string.IsNullOrEmpty(line))
@@ -798,8 +799,8 @@ namespace xParLib
 
         /// <summary>
         /// Вычисляет итоговые значения префикса и суффикса для IP.
-        /// Аналог setaffixes() из par.c (строки 664–696).
         /// </summary>
+        /// <remarks>Аналог setaffixes() из par.c (строки 664–696).</remarks>
         /// <param name="segments">Массив сегментов строк (LineSegment)</param>
         /// <param name="startIndex">Индекс первого сегмента IP (включительно)</param>
         /// <param name="endIndex">Индекс последнего сегмента IP (включительно)</param>

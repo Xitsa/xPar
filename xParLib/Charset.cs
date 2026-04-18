@@ -22,6 +22,7 @@ namespace xParLib
     /// Класс для работы с наборами символов (charset), соответствующий оригинальному par.
     /// Работает с grapheme clusters (строками C#), а не с отдельными char/байтами.
     /// </summary>
+    /// <remarks>Аналог реализации из charset.c оригинального par (Par 1.53.0).</remarks>
     public class Charset
     {
         private readonly HashSet<string> _inList = new HashSet<string>(StringComparer.Ordinal);
