@@ -467,6 +467,118 @@ namespace xParLib
         }
 
         //
+        // JustBreaks — выбор разрывов строк (justification)
+        //
+
+        /// <summary>
+        /// Выбирает разрывы строк согласно политике для just=1 (выравнивание по обоим краям).
+        /// </summary>
+        /// <remarks>
+        /// Аналог justbreaks() из reformat.c (строки 211–289).
+        /// Две фазы: минимизация максимального межсловного промежутка,
+        /// затем минимизация суммы квадратов дополнительных пробелов.
+        /// </remarks>
+        /// <param name="words">Список слов (изменяется: поля Score и NextLine).</param>
+        /// <param name="L">Максимальная длина строки.</param>
+        /// <param name="last">Учитывать ли последнюю строку.</param>
+        /// <returns>Сообщение об ошибке или null при успехе.</returns>
+        public static string? JustBreaks(List<Word> words, int L, bool last)
+        {
+            if (words.Count == 0) return null;
+
+            int n = words.Count;
+
+            // === Фаза 1: Минимизация максимального межсловного промежутка ===
+            for (int idx = n - 1; idx >= 0; idx--)
+            {
+                words[idx].Score = L;
+
+                int extra = L - words[idx].Width;
+                int numgaps = 0;
+                int j = idx + 1;
+
+                while (j <= n && extra >= 0)
+                {
+                    int gap = numgaps > 0 ? (extra + numgaps - 1) / numgaps : L;
+                    int score = (j < n) ? words[j].Score : 0;
+
+                    if (j >= n && !last)
+                        gap = 0;
+
+                    if (gap > score) score = gap;
+
+                    if (score < words[idx].Score)
+                    {
+                        words[idx].NextLine = (j < n) ? j : null;
+                        words[idx].Score = score;
+                    }
+
+                    if (j >= n) break;
+
+                    extra -= 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                    numgaps++;
+                    j++;
+                }
+            }
+
+            int maxgap = words[0].Score;
+            if (maxgap >= L)
+                return "Cannot justify.";
+
+            // === Фаза 2: Минимизация суммы квадратов дополнительных пробелов ===
+            for (int idx = n - 1; idx >= 0; idx--)
+            {
+                words[idx].Score = -1;
+
+                int extra = L - words[idx].Width;
+                int numgaps = 0;
+                int j = idx + 1;
+
+                while (j <= n && extra >= 0)
+                {
+                    int gap = numgaps > 0 ? (extra + numgaps - 1) / numgaps : L;
+
+                    if (j >= n)
+                    {
+                        if (!last)
+                        {
+                            words[idx].NextLine = null;
+                            words[idx].Score = 0;
+                            break;
+                        }
+                        // last=true: score = 0
+                    }
+
+                    int score = (j < n) ? words[j].Score : 0;
+
+                    if (gap <= maxgap && score >= 0)
+                    {
+                        int numbiggaps = (numgaps > 0) ? extra % numgaps : 0;
+                        int baseGap = extra / numgaps;
+                        score += baseGap * (extra + numbiggaps) + numbiggaps;
+
+                        if (words[idx].Score < 0 || score <= words[idx].Score)
+                        {
+                            words[idx].NextLine = (j < n) ? j : null;
+                            words[idx].Score = score;
+                        }
+                    }
+
+                    if (j >= n) break;
+
+                    extra -= 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                    numgaps++;
+                    j++;
+                }
+            }
+
+            if (words[0].Score < 0)
+                return "Cannot format paragraph (impossibility 3)";
+
+            return null;
+        }
+
+        //
         // Вспомогательные методы
         //
 
