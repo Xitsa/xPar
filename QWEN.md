@@ -74,6 +74,7 @@
     - Возвращает `ExtractWordsResult`
   - `ReformatModule.Reformat(...)` — главный метод форматирования (заглушка, реализуется в следующих шагах)
   - `ReformatModule.SimpleBreaks(List<Word>, int L, bool last)` — выбор разрывов строк, максимизация кратчайшей строки (аналог simplebreaks(), reformat.c строки 98–136)
+  - `ReformatModule.NormalBreaks(List<Word>, int L, bool fit, bool last)` — выбор разрывов строк для just=0, три этапа оптимизации (аналог normalbreaks(), reformat.c строки 138–196)
 - Вспомогательные методы (private в ReformatModule): `GetGraphemeWidth`, `CalcVisualWidth`, `GetSuffix`, `CalcGraphemeWidthRange`, `IsAlphanumeric`, `IsCurious`, `IsCapitalized`, `SplitWord`
 - Вспомогательные методы (private в LineReader): `IsBodiless`, `IsInserted`, `IsVacant`, `CountGraphemes`, `CountNonSpaceGraphemes`
 - Вспомогательные методы (public в LineReader): `GetGraphemes(string)` — получение списка графем-кластеров строки

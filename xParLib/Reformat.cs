@@ -367,6 +367,106 @@ namespace xParLib
         }
 
         //
+        // NormalBreaks — выбор разрывов строк (без justification)
+        //
+
+        /// <summary>
+        /// Выбирает разрывы строк согласно политике для just=0.
+        /// </summary>
+        /// <remarks>
+        /// Аналог normalbreaks() из reformat.c (строки 138–196).
+        /// Три этапа: оптимизация ширины (fit), определение shortest, минимизация суммы квадратов.
+        /// </remarks>
+        /// <param name="words">Список слов (изменяется: поля Score и NextLine).</param>
+        /// <param name="L">Максимальная длина строки.</param>
+        /// <param name="fit">Минимизировать разницу между строками.</param>
+        /// <param name="last">Учитывать ли последнюю строку.</param>
+        /// <returns>Сообщение об ошибке или null при успехе.</returns>
+        public static string? NormalBreaks(List<Word> words, int L, bool fit, bool last)
+        {
+            if (words.Count == 0) return null;
+
+            int target = L;
+
+            // === Этап A: Оптимизация ширины (только при fit=1) ===
+            if (fit)
+            {
+                int bestScore = L + 1;
+                for (int tryL = L; ; tryL--)
+                {
+                    int shortest = SimpleBreaks(words, tryL, last);
+                    if (shortest < 0) break;
+                    if (tryL - shortest < bestScore)
+                    {
+                        target = tryL;
+                        bestScore = target - shortest;
+                    }
+                }
+            }
+
+            // === Этап B: Определение минимальной длины строки ===
+            int shortestLen = SimpleBreaks(words, target, last);
+            if (shortestLen < 0)
+                return "Cannot format paragraph (impossibility 1)";
+
+            // === Этап C: Минимизация суммы квадратов отклонений ===
+            int n = words.Count;
+            for (int idx = n - 1; idx >= 0; idx--)
+            {
+                words[idx].Score = -1;
+
+                int linelen = words[idx].Width;
+                int j = idx + 1;
+
+                while (j < n && linelen <= target)
+                {
+                    int extra = target - linelen;
+                    int minlen = shortestLen;
+                    int score = words[j].Score;
+
+                    if (linelen >= minlen && score >= 0)
+                    {
+                        score += extra * extra;
+                        if (words[idx].Score < 0 || score <= words[idx].Score)
+                        {
+                            words[idx].NextLine = j;
+                            words[idx].Score = score;
+                        }
+                    }
+
+                    linelen += 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                    j++;
+                }
+
+                // Случай: все оставшиеся слова помещаются на одну строку
+                // После цикла j >= n, linelen = полная длина от idx до конца
+                if (j >= n && linelen <= target)
+                {
+                    int extra = target - linelen;
+                    int minlen = shortestLen;
+                    int score = 0;
+                    if (!last)
+                        extra = minlen = 0;
+
+                    if (linelen >= minlen && score >= 0)
+                    {
+                        score += extra * extra;
+                        if (words[idx].Score < 0 || score <= words[idx].Score)
+                        {
+                            words[idx].NextLine = null;
+                            words[idx].Score = score;
+                        }
+                    }
+                }
+            }
+
+            if (words[0].Score < 0)
+                return "Cannot format paragraph (impossibility 2)";
+
+            return null;
+        }
+
+        //
         // Вспомогательные методы
         //
 
