@@ -63,6 +63,7 @@ namespace xParLib
     /// </summary>
     public readonly record struct ExtractWordsResult(
         List<Word> Words,
+        List<string> Prefixes,
         List<string> Suffixes,
         int L,
         string? ErrorMessage);
@@ -132,6 +133,7 @@ namespace xParLib
         {
             int L = width - prefix - suffix;
             int numIn = endIndex - startIndex + 1;
+            var prefixes = new List<string>(numIn);
             var suffixes = new List<string>(numIn);
 
             var words = new List<Word>();
@@ -148,11 +150,13 @@ namespace xParLib
                 {
                     return new ExtractWordsResult(
                         Words: new List<Word>(),
+                        Prefixes: new List<string>(),
                         Suffixes: new List<string>(),
                         L: 0,
                         ErrorMessage: $"Line {i - startIndex + 1} shorter than <prefix> + <suffix> = {prefix} + {suffix} = {affix}");
                 }
 
+                prefixes.Add(GetPrefix(line, prefix));
                 suffixes.Add(GetSuffix(line, suffix));
 
                 var graphemes = LineReader.GetGraphemes(line);
@@ -258,6 +262,7 @@ namespace xParLib
                     {
                         return new ExtractWordsResult(
                             Words: new List<Word>(),
+                            Prefixes: new List<string>(),
                             Suffixes: new List<string>(),
                             L: 0,
                             ErrorMessage: $"Word too long: {w.Text}");
@@ -289,6 +294,7 @@ namespace xParLib
 
             return new ExtractWordsResult(
                 Words: words,
+                Prefixes: prefixes,
                 Suffixes: suffixes,
                 L: L,
                 ErrorMessage: null);
@@ -579,6 +585,211 @@ namespace xParLib
         }
 
         //
+        // ConstructLines — построение выходных строк
+        //
+
+        /// <summary>
+        /// Строит выходные строки абзаца из слов с расставленными разрывами.
+        /// </summary>
+        /// <remarks>
+        /// Аналог блока "Construct the lines" из reformat.c (строки 459–522).
+        /// Включает фазу touch и цикл построения строк с префиксами, телом и суффиксами.
+        /// </remarks>
+        /// <param name="words">Список слов с расставленными NextLine.</param>
+        /// <param name="prefixes">Префиксы исходных строк.</param>
+        /// <param name="suffixes">Суффиксы исходных строк.</param>
+        /// <param name="L">Длина тела строки (может измениться при touch).</param>
+        /// <param name="affixes">Результат вычисления аффиксов IP.</param>
+        /// <param name="hang">Минимальное количество строк.</param>
+        /// <param name="just">Режим justification.</param>
+        /// <param name="last">Учитывать ли последнюю строку.</param>
+        /// <param name="touch">Изменить L на фактическую длину.</param>
+        /// <returns>Список выходных строк.</returns>
+        public static IReadOnlyList<string> ConstructLines(
+            List<Word> words,
+            List<string> prefixes,
+            List<string> suffixes,
+            int L,
+            SetAffixesResult affixes,
+            int hang,
+            bool just,
+            bool last,
+            bool touch)
+        {
+            int numIn = prefixes.Count;
+            int prefix = affixes.Prefix;
+            int suffix = affixes.Suffix;
+            int affix = prefix + suffix;
+            var result = new List<string>();
+
+            // Фаза touch: изменить L на фактическую длину самой длинной строки
+            if (!just && touch && words.Count > 0)
+            {
+                int maxLen = 0;
+                int? wordIdx = 0;
+                while (wordIdx.HasValue)
+                {
+                    int lineLen = words[wordIdx.Value].Width;
+                    int j = wordIdx.Value + 1;
+                    while (j < words.Count && j != words[wordIdx.Value].NextLine)
+                    {
+                        lineLen += 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                        j++;
+                    }
+                    if (lineLen > maxLen) maxLen = lineLen;
+                    wordIdx = words[wordIdx.Value].NextLine;
+                }
+                L = maxLen;
+            }
+
+            int numout = 0;
+            int? wordIdx2 = words.Count > 0 ? 0 : null;
+
+            while (numout < hang || wordIdx2.HasValue)
+            {
+                // Шаг 1: Вычисление numgaps и extra
+                int numgaps = 0;
+                int extra = L;
+                if (wordIdx2.HasValue)
+                {
+                    extra = L - words[wordIdx2.Value].Width;
+                    int j = wordIdx2.Value + 1;
+                    while (j < words.Count && j != words[wordIdx2.Value].NextLine)
+                    {
+                        numgaps++;
+                        extra -= 1 + (words[j].Flags.HasFlag(WordFlags.Shifted) ? 1 : 0) + words[j].Width;
+                        j++;
+                    }
+                }
+
+                // Шаг 2: Вычисление linelen
+                bool hasNextLine = wordIdx2.HasValue && words[wordIdx2.Value].NextLine.HasValue;
+                int linelen;
+                if (suffix > 0 || (just && (hasNextLine || last)))
+                    linelen = L + affix;
+                else if (wordIdx2.HasValue)
+                    linelen = prefix + L - extra;
+                else
+                    linelen = prefix;
+
+                var sb = new StringBuilder(linelen);
+
+                // Шаг 3: Копирование префикса
+                string prefixText;
+                if (numout < numIn)
+                    prefixText = prefixes[numout];
+                else if (numIn > hang)
+                    prefixText = prefixes[numIn - 1];
+                else
+                    prefixText = prefixes[numIn - 1];
+
+                var prefixGraphemes = LineReader.GetGraphemes(prefixText);
+                int prefixGraphemeCount = prefixGraphemes.Count;
+
+                if (numout < numIn || numIn > hang)
+                {
+                    // Копируем первые prefix графем
+                    int take = Math.Min(prefix, prefixGraphemeCount);
+                    sb.Append(string.Concat(prefixGraphemes.Take(take)));
+                    // Дополняем пробелами если нужно
+                    for (int i = take; i < prefix; i++)
+                        sb.Append(' ');
+                }
+                else
+                {
+                    // numout >= numIn && numIn <= hang: fallback
+                    int take = Math.Min(affixes.AugmentedFallbackPre, prefixGraphemeCount);
+                    take = Math.Min(take, prefix);
+                    sb.Append(string.Concat(prefixGraphemes.Take(take)));
+                    // Дополняем пробелами до prefix
+                    for (int i = take; i < prefix; i++)
+                        sb.Append(' ');
+                }
+
+                // Шаг 4: Копирование тела (слов)
+                if (wordIdx2.HasValue)
+                {
+                    int phase = numgaps / 2;
+                    int j = wordIdx2.Value;
+                    while (true)
+                    {
+                        sb.Append(words[j].Text);
+
+                        int nextJ = j + 1;
+                        if (nextJ >= words.Count || nextJ == words[wordIdx2.Value].NextLine)
+                            break;
+
+                        sb.Append(' ');
+
+                        // Justification: распределить дополнительные пробелы
+                        if (just && (hasNextLine || last) && numgaps > 0)
+                        {
+                            phase += extra;
+                            while (phase >= numgaps)
+                            {
+                                sb.Append(' ');
+                                phase -= numgaps;
+                            }
+                        }
+
+                        // Shifted: дополнительный пробел
+                        if (words[nextJ].Flags.HasFlag(WordFlags.Shifted))
+                            sb.Append(' ');
+
+                        j = nextJ;
+                    }
+                }
+
+                // Шаг 5: Заполнение пробелами до linelen - affix
+                int bodyEndLen = linelen - affix;
+                while (sb.Length < bodyEndLen)
+                    sb.Append(' ');
+
+                // Шаг 6: Копирование суффикса
+                string suffixText;
+                if (numout < numIn)
+                    suffixText = suffixes[numout];
+                else if (numIn > hang)
+                    suffixText = suffixes[numIn - 1];
+                else
+                    suffixText = suffixes[numIn - 1];
+
+                var suffixGraphemes = LineReader.GetGraphemes(suffixText);
+                int suffixGraphemeCount = suffixGraphemes.Count;
+
+                if (numout < numIn || numIn > hang)
+                {
+                    // Копируем последние suffix графем
+                    int take = Math.Min(suffix, suffixGraphemeCount);
+                    int start = suffixGraphemeCount - take;
+                    sb.Append(string.Concat(suffixGraphemes.Skip(start)));
+                    // Дополняем пробелами если нужно
+                    for (int i = take; i < suffix; i++)
+                        sb.Append(' ');
+                }
+                else
+                {
+                    // numout >= numIn && numIn <= hang: fallback
+                    int take = Math.Min(affixes.FallbackSuf, suffixGraphemeCount);
+                    take = Math.Min(take, suffix);
+                    int start = Math.Max(0, suffixGraphemeCount - take);
+                    sb.Append(string.Concat(suffixGraphemes.Skip(start)));
+                    // Дополняем пробелами до suffix
+                    for (int i = take; i < suffix; i++)
+                        sb.Append(' ');
+                }
+
+                result.Add(sb.ToString());
+                numout++;
+
+                if (wordIdx2.HasValue)
+                    wordIdx2 = words[wordIdx2.Value].NextLine;
+            }
+
+            return result;
+        }
+
+        //
         // Вспомогательные методы
         //
 
@@ -625,6 +836,18 @@ namespace xParLib
             int start = graphemes.Count - suffixCount;
             if (start < 0) start = 0;
             return string.Concat(graphemes.Skip(start));
+        }
+
+        /// <summary>
+        /// Извлекает префикс строки — первые <paramref name="prefixCount"/> графем.
+        /// </summary>
+        private static string GetPrefix(string line, int prefixCount)
+        {
+            if (prefixCount == 0) return string.Empty;
+
+            var graphemes = LineReader.GetGraphemes(line);
+            int count = Math.Min(prefixCount, graphemes.Count);
+            return string.Concat(graphemes.Take(count));
         }
 
         /// <summary>

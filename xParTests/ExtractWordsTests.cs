@@ -433,5 +433,53 @@ namespace xParTests
             Assert.Equal("...", result.Suffixes[0]);
             Assert.Equal("!!!", result.Suffixes[1]);
         }
+
+        // ============================================================
+        // Prefixes корректно сохраняются
+        // ============================================================
+
+        [Fact]
+        public void ExtractWords_Prefixes_CorrectlySaved()
+        {
+            var segments = ToSegments(
+                "---hello...",
+                "---world!!!"
+            );
+
+            var result = ReformatModule.ExtractWords(
+                segments, 0, 1,
+                prefix: 3, suffix: 3, width: 72,
+                TerminalChars, cap: false, guess: false, report: false);
+
+            Assert.Null(result.ErrorMessage);
+            Assert.Equal(2, result.Prefixes.Count);
+            Assert.Equal("---", result.Prefixes[0]);
+            Assert.Equal("---", result.Prefixes[1]);
+        }
+
+        [Fact]
+        public void ExtractWords_PrefixesAndSuffixes_BothSaved()
+        {
+            var segments = ToSegments(
+                "pre>hello<suf",
+                "pre>world<suf"
+            );
+
+            var result = ReformatModule.ExtractWords(
+                segments, 0, 1,
+                prefix: 4, suffix: 4, width: 72,
+                TerminalChars, cap: false, guess: false, report: false);
+
+            Assert.Null(result.ErrorMessage);
+            Assert.Equal(2, result.Prefixes.Count);
+            Assert.Equal("pre>", result.Prefixes[0]);
+            Assert.Equal("pre>", result.Prefixes[1]);
+            Assert.Equal(2, result.Suffixes.Count);
+            Assert.Equal("<suf", result.Suffixes[0]);
+            Assert.Equal("<suf", result.Suffixes[1]);
+            // Слова не содержат префикс/суффикс
+            Assert.Equal("hello", result.Words[0].Text);
+            Assert.Equal("world", result.Words[1].Text);
+        }
     }
 }
