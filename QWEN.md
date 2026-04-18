@@ -65,7 +65,17 @@
   - Сигнатура: `SetAffixes(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, Charset bodyChars, Charset quoteChars, int hang, bool body, bool quote, int? prefix, int? suffix)`
   - Возвращает `SetAffixesResult` (Prefix, Suffix, AugmentedFallbackPre, FallbackSuf)
   - Вызывает `Compresuflen` при необходимости, учитывает `hang` и `quote` для augmented fallback
-- Вспомогательные методы (private): `IsBodiless`, `IsInserted`, `IsVacant`, `GetGraphemes`, `CountGraphemes`, `CountNonSpaceGraphemes`
+- `xParLib.WordFlags` — флаги свойств слова (None, Shifted, Curious, Capital)
+- `xParLib.Word` — представление слова в абзаце (Text, NextLine, Score, Width, Flags, SourceLineIndex, SeparatorAfterWord)
+- `xParLib.ExtractWordsResult` — результат выделения слов (Words, Suffixes, L, ErrorMessage)
+- `xParLib.ReformatModule` — класс для форматирования абзацев (аналог reformat.c)
+  - `ReformatModule.ExtractWords(...)` — выделение слов, обработка guess, проверка/разбиение длины (аналог reformat.c строки 331–430)
+    - Сигнатура: `ExtractWords(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, int prefix, int suffix, int width, Charset terminalChars, bool cap, bool guess, bool report)`
+    - Возвращает `ExtractWordsResult`
+  - `ReformatModule.Reformat(...)` — главный метод форматирования (заглушка, реализуется в следующих шагах)
+- Вспомогательные методы (private в ReformatModule): `GetGraphemeWidth`, `CalcVisualWidth`, `GetSuffix`, `CalcGraphemeWidthRange`, `IsAlphanumeric`, `IsCurious`, `IsCapitalized`, `SplitWord`
+- Вспомогательные методы (private в LineReader): `IsBodiless`, `IsInserted`, `IsVacant`, `CountGraphemes`, `CountNonSpaceGraphemes`
+- Вспомогательные методы (public в LineReader): `GetGraphemes(string)` — получение списка графем-кластеров строки
 
 ## Основные алгоритмы оригинала (par.doc)
 - **comprelen** — длина общего префикса строк

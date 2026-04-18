@@ -342,7 +342,9 @@ namespace xParLib
         /// <summary>
         /// Получить список графем-кластеров строки.
         /// </summary>
-        private static IReadOnlyList<string> GetGraphemes(string line)
+        /// <param name="line">Входная строка.</param>
+        /// <returns>Список графем-кластеров.</returns>
+        public static IReadOnlyList<string> GetGraphemes(string line)
         {
             if (string.IsNullOrEmpty(line))
                 return Array.Empty<string>();
