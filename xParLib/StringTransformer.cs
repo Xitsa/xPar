@@ -27,46 +27,52 @@ namespace xParLib
             var quoteChars = options.QuoteChars ?? Charset.Parse("> ");
             var whiteChars = options.WhiteChars ?? Charset.Parse(" \f\n\r\t\v");
 
+            bool sawNonEmpty = false;
+            bool shouldOutputEmpty = false;
+
             while (index < lines.Count)
             {
+                string line = lines[index];
+                if (IsProtectedLine(line, protectChars))
+                {
+                    sawNonEmpty = true;
+                    result.Add(line);
+                    index++;
+                    continue;
+                }
+                else if (IsBlankLine(line))
+                {
+                    if (options.Expel)
+                    {
+                        shouldOutputEmpty = sawNonEmpty;
+                        index++;
+                        continue;
+                    }
+                    result.Add(string.Empty);
+                    index++;
+                    continue;
+                }
+
+                sawNonEmpty = true;
+                if (shouldOutputEmpty)
+                {
+                    result.Add(string.Empty);
+                    shouldOutputEmpty = false;
+                }
+
                 // ReadLines читает абзац до blank/protected/EOF
                 var readResult = LineReader.ReadLines(
                     lines, index,
                     protectChars, quoteChars, whiteChars,
                     options.Tab, options.Invis, options.Quote);
 
-                if (readResult.Segments.Length == 0)
-                {
-                    // Пустой абзац — проверяем, что остановило чтение
-                    if (readResult.IsEof)
-                    {
-                        // EOF — выходим
-                        break;
-                    }
-
-                    // Blank или protected — обрабатываем строку по отдельности
-                    if (readResult.NextIndex < lines.Count)
-                    {
-                        string line = lines[readResult.NextIndex];
-                        if (IsProtectedLine(line, protectChars))
-                        {
-                            result.Add(line);
-                        }
-                        else if (IsBlankLine(line))
-                        {
-                            result.Add(string.Empty);
-                        }
-                        index = readResult.NextIndex + 1;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                    continue;
-                }
-
                 // Обработка абзаца
                 ProcessParagraph(readResult.Segments, options, result);
+                if (readResult.IsEof)
+                {
+                    // EOF — выходим
+                    break;
+                }
 
                 index = readResult.NextIndex;
             }
