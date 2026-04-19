@@ -705,7 +705,7 @@ namespace xParLib
                 else
                     linelen = prefix;
 
-                var sb = new StringBuilder(linelen);
+                var sb = new StringBuilderWrapper(linelen);
 
                 // Шаг 3: Копирование префикса
                 string prefixText;
@@ -746,7 +746,7 @@ namespace xParLib
                     int j = wordIdx2.Value;
                     while (true)
                     {
-                        sb.Append(words[j].Text);
+                        sb.Append(words[j]);
 
                         int nextJ = j + 1;
                         if (nextJ >= words.Count || nextJ == words[wordIdx2.Value].NextLine)
@@ -778,7 +778,7 @@ namespace xParLib
                 if (suffix > 0 || (just && (hasNextLine || last)))
                 {
                     int bodyEndLen = prefix + L;
-                    while (sb.Length < bodyEndLen)
+                    while (sb.GetWidth() < bodyEndLen)
                         sb.Append(' ');
                 }
 
@@ -1019,6 +1019,65 @@ namespace xParLib
             }
 
             return (first, second);
+        }
+    }
+
+    /// <summary>
+    /// Обёртка над <see cref="StringBuilder"/>
+    /// Чтобы учитывать визуальную ширину итоговой строки
+    /// </summary>
+    /// <param name="reserve"></param>
+    public class StringBuilderWrapper(int reserve)
+    {
+        private readonly StringBuilder builder = new(reserve);
+        private int Width = 0;
+
+        /// <summary>
+        /// Добавить символ и обновить ширину строки его шириной
+        /// </summary>
+        /// <param name="Char">Добавляемый символ</param>
+        public void Append(char Char)
+        {
+            builder.Append(Char);
+            Width += Wcwidth.UnicodeCalculator.GetWidth(Char);
+        }
+
+        /// <summary>
+        /// Добавить строку и обновить ширину строки её шириной
+        /// </summary>
+        /// <param name="text">Добавляемая строка</param>
+        public void Append(string text)
+        {
+            builder.Append(text);
+            Width += LineReader.CountGraphemes(text);
+        }
+
+        /// <summary>
+        /// Добавить слово и обновить ширину строки его шириной
+        /// </summary>
+        /// <param name="word">Добавляемое слово</param>
+        public void Append(Word word)
+        {
+            builder.Append(word.Text);
+            Width += word.Width;
+        }
+
+        /// <summary>
+        /// Получить текущую визуальную ширину
+        /// </summary>
+        /// <returns>Текущая визуальная ширина</returns>
+        public int GetWidth()
+        {
+            return Width;
+        }
+
+        /// <summary>
+        /// Подготовить итоговую строку.
+        /// </summary>
+        /// <returns>Итоговая строка</returns>
+        public override string ToString()
+        {
+            return builder.ToString();
         }
     }
 }

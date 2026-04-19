@@ -359,7 +359,7 @@ namespace xParLib
         /// <summary>
         /// Подсчитать количество графем в строке.
         /// </summary>
-        private static int CountGraphemes(string line)
+        public static int CountGraphemes(string line)
         {
             if (string.IsNullOrEmpty(line))
                 return 0;

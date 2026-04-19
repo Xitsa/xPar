@@ -709,5 +709,28 @@ namespace xParTests
                 "`Unicode`, но сил не хватало."
             );
         }
+
+        [Fact]
+        public void Official_WildSample_03()
+        {
+            var input = T(
+                "        **********************************************",
+                "        ** Main's Law: For every action there is     コ **",
+                "        ** equal and opposite government program.   **",
+                "        **********************************************"
+            );
+
+            var result = Transform(input, "44gqrj");
+
+            AssertLines(result,
+                "        ************************************",
+                "        ** Main's  Law: For every  action **",
+                "        ** there is コ equal and opposite **",
+                "        ** government program.            **",
+                "        ************************************"
+            );
+        }
+
+
     }
 }
