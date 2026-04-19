@@ -76,7 +76,7 @@ namespace xpar
             }
             while (curLine != null);
 
-            var results = transformer.Transform(lines);
+            var results = transformer.Transform(lines, options);
             foreach (var result in results)
             {
                 Console.WriteLine(result);

@@ -92,7 +92,7 @@ namespace xParLib
         /// Читает строки из входного массива до EOF, protected line или blank line.
         /// </summary>
         /// <remarks>Аналог readlines() из par.c (строки 87–93).</remarks>
-        public ReadLinesResult ReadLines(
+        public static ReadLinesResult ReadLines(
             IReadOnlyList<string> inputLines,
             int startIndex,
             Charset protectChars,

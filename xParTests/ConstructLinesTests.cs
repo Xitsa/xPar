@@ -80,10 +80,10 @@ namespace xParTests
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Single(result);
-            // ">>" + "hello" + пробелы до 10 + "<<"
-            // linelen = 10 + 4 = 14, bodyEndLen = 10
-            // ">>" (2) + "hello" (5) + 3 пробела = 10
-            Assert.Equal(">>hello   <<", result[0]);
+            // ">>" + "hello" + пробелы до L=10 + "<<"
+            // linelen = 10 + 4 = 14, bodyEndLen = 2 + 10 = 12
+            // ">>" (2) + "hello" (5) + 5 пробелов = 12, затем "<<"
+            Assert.Equal(">>hello     <<", result[0]);
         }
 
         [Fact]
@@ -102,8 +102,8 @@ namespace xParTests
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Equal(2, result.Count);
-            Assert.Equal(">>hello   .1", result[0]);
-            Assert.Equal("<<world   .2", result[1]);
+            Assert.Equal(">>hello     .1", result[0]);
+            Assert.Equal("<<world     .2", result[1]);
         }
 
         // ============================================================
@@ -274,12 +274,14 @@ namespace xParTests
                 hang: 3, just: false, last: false, touch: false);
 
             Assert.Equal(3, result.Count);
-            // Строка 1: ">>" + "hi" + 1 пробел + "<<" (linelen=9, bodyEndLen=5, но hi=2, 5-2=3 пробела? Нет: L-extra)
-            Assert.Equal(">>hi <<", result[0]);
-            // Строка 2: ">>" + "ok" + 1 пробел + "<<"
-            Assert.Equal(">>ok <<", result[1]);
-            // Строка 3: fallback префикс + пробелы + fallback суффикс
-            Assert.Equal(">>   <<", result[2]);
+            // Строка 1: ">>" + "hi" + пробелы до L=5 + "<<"
+            // bodyEndLen = 2 + 5 = 7, ">>" (2) + "hi" (2) + 3 пробела = 7
+            Assert.Equal(">>hi   <<", result[0]);
+            // Строка 2: аналогично
+            Assert.Equal(">>ok   <<", result[1]);
+            // Строка 3: fallback префикс + пробелы до bodyEndLen + fallback суффикс
+            // bodyEndLen = prefix + L = 2 + 5 = 7, префикс ">>" (2) + 5 пробелов
+            Assert.Equal(">>     <<", result[2]);
         }
     }
 }

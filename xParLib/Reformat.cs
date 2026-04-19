@@ -773,10 +773,14 @@ namespace xParLib
                     }
                 }
 
-                // Шаг 5: Заполнение пробелами до linelen - affix
-                int bodyEndLen = linelen - affix;
-                while (sb.Length < bodyEndLen)
-                    sb.Append(' ');
+                // Шаг 5: Заполнение пробелами до конца body area
+                // Заполняем только когда suffix > 0 или just
+                if (suffix > 0 || (just && (hasNextLine || last)))
+                {
+                    int bodyEndLen = prefix + L;
+                    while (sb.Length < bodyEndLen)
+                        sb.Append(' ');
+                }
 
                 // Шаг 6: Копирование суффикса
                 string suffixText;

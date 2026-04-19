@@ -4,7 +4,7 @@ namespace xParTests;
 
 public class LineReaderTests
 {
-    private readonly LineReader _reader = new LineReader();
+    // LineReader.ReadLines теперь static — вызываем напрямую
 
     // Charset'ы по умолчанию для тестов
     private static Charset EmptyCharset => Charset.Parse("");
@@ -17,7 +17,7 @@ public class LineReaderTests
     public void ReadLines_EmptyInput_ReturnsEmptyResult()
     {
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             Array.Empty<string>(), 0,
             EmptyCharset, DefaultQuoteChars, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -35,7 +35,7 @@ public class LineReaderTests
         var lines = new[] { "Hello", "World", "Test" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, DefaultQuoteChars, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -61,7 +61,7 @@ public class LineReaderTests
         var lines = new[] { "Hello", "World", "# Protected", "More" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             protectChars, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -82,7 +82,7 @@ public class LineReaderTests
         var lines = new[] { "# Protected", "Hello" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             protectChars, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -104,7 +104,7 @@ public class LineReaderTests
         var lines = new[] { "Hello", "World", "", "More" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -124,7 +124,7 @@ public class LineReaderTests
         var lines = new[] { "Hello", "   ", "More" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -147,7 +147,7 @@ public class LineReaderTests
         var lines = new[] { "a\tb" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 4, invis: false, quote: false);
@@ -164,7 +164,7 @@ public class LineReaderTests
         var lines = new[] { "\thello" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 8, invis: false, quote: false);
@@ -181,7 +181,7 @@ public class LineReaderTests
         var lines = new[] { "a\t\tb" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 4, invis: false, quote: false);
@@ -203,7 +203,7 @@ public class LineReaderTests
         var lines = new[] { "a\fb" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -220,7 +220,7 @@ public class LineReaderTests
         var lines = new[] { "a\0b" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -241,7 +241,7 @@ public class LineReaderTests
         var lines = new[] { "Skip1", "Skip2", "Hello", "World" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 2,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);
@@ -264,7 +264,7 @@ public class LineReaderTests
         var lines = new[] { "> Level 1", ">> Level 2", "> Back to 1" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, quoteChars, DefaultWhiteChars,
             tab: 1, invis: false, quote: true);
@@ -303,7 +303,7 @@ public class LineReaderTests
         };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, quoteChars, DefaultWhiteChars,
             tab: 1, invis: false, quote: true);
@@ -338,7 +338,7 @@ public class LineReaderTests
         var lines = new[] { "> One", "> Two", "> Three" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, quoteChars, DefaultWhiteChars,
             tab: 1, invis: false, quote: true);
@@ -359,7 +359,7 @@ public class LineReaderTests
         var lines = new[] { "Hello", "World" };
 
         // Act
-        var result = _reader.ReadLines(
+        var result = LineReader.ReadLines(
             lines, 0,
             EmptyCharset, EmptyCharset, DefaultWhiteChars,
             tab: 1, invis: false, quote: false);

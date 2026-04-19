@@ -46,9 +46,9 @@
 ## Ключевые классы и методы
 - `xParLib.ParOptions` — класс для хранения параметров форматирования
 - `xParLib.ParOptions.Parse(string[] args)` — метод для разбора аргументов командной строки
-- `xParLib.StringTransformer.Transform(IReadOnlyList<string>)` — главный публичный метод библиотеки
+- `xParLib.StringTransformer.Transform(IReadOnlyList<string>, ParOptions)` — главный публичный метод библиотеки
 - `xParLib.Charset` — класс для работы с наборами символов (charset syntax оригинала)
-- `xParLib.LineReader` — класс для чтения и аннотирования строк (аналог `readlines()` из par.c)
+- `xParLib.LineReader.ReadLines(...)` — чтение строк до EOF/protected/blank line (static)
 - `xParLib.LineProp` — свойства строки (P, S, Flags, Rc)
 - `xParLib.LineSegment` — пара (строка, LineProp)
 - `xParLib.ReadLinesResult` — результат работы `LineReader.ReadLines`
