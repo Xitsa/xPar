@@ -1,3 +1,31 @@
+# xpar — A console application for paragraph formatting
+
+## Description
+
+**xpar** — is a C# console application that is a functional copy of the `par` utility (version 1.53.0).
+It reads lines from standard input, reformats paragraphs according to specified parameters, and outputs the result.
+The project implements Unicode support through working with grapheme clusters, and also supports line length calculation considering visual character width.
+
+## Reasons for Creating the Port
+
+`par` has  been a constant  companion in my life,  starting from `MS  DOS` and
+continuing into `Windows`. However, as Unicode and multi-byte encodings became
+widespread, `par` gradually stopped coping.
+
+I  didn’t managed  to run  patches  from Jérôme  Pouiller on  `Windows`, so  I
+gradually stopped using  this utility, even though I still  missed it. I tried
+several times to  port it to other languages with  Unicode support, but lacked
+the strength 😞.
+
+This time, I decided to try again with the following constraints:
+
+* Unicode support with grapheme cluster handling from the start;
+* Focus on replicating the original formatting logic;
+* Sacrificing performance:  `par` is quite memory-efficient,  I’ve decided not
+  copy this for better method separation and independent testing capabilities;
+* Only `utf-8` encoding support, as I don't use others currently and for me it
+  is more convenient.
+
 # xpar — Консольное приложение для переформатирования абзацев
 
 ## Описание проекта
