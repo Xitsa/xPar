@@ -133,6 +133,6 @@
 - **Запуск тестов:** `dotnet test --project xParTests`
 - **Сборка решения:** `dotnet build`
 - **Запуск приложения:** `dotnet run --project xPar`
-- **Публикация утилиты:** `dotnet publish xPar -c Release -p:PublishAot=true -o ./publish`
+- **Публикация утилиты:** `dotnet publish xPar -c Release -o ./publish`
   - Результат: `./publish/xpar.exe`
   - Использование: `.\publish\xpar.exe w15 < input.txt`
