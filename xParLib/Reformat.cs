@@ -92,8 +92,43 @@ namespace xParLib
             ParOptions options,
             SetAffixesResult affixes)
         {
-            // TODO: реализовать логику форматирования на следующем этапе
-            return Array.Empty<string>();
+            int prefix = affixes.Prefix;
+            int suffix = affixes.Suffix;
+            int width = options.Width;
+
+            // Шаг 1: Выделение слов, обработка guess, проверка длины
+            var extractResult = ExtractWords(
+                segments, startIndex, endIndex,
+                prefix, suffix, width,
+                options.TerminalChars ?? Charset.Parse(".?!:"),
+                options.Cap, options.Guess, options.Report);
+
+            if (extractResult.ErrorMessage != null)
+                throw new InvalidOperationException(extractResult.ErrorMessage);
+
+            var words = extractResult.Words;
+            var prefixes = extractResult.Prefixes;
+            var suffixes = extractResult.Suffixes;
+            int L = extractResult.L;
+
+            // Шаг 2: Выбор разрывов строк
+            string? breakError;
+            if (options.Just)
+                breakError = JustBreaks(words, L, options.Last);
+            else
+                breakError = NormalBreaks(words, L, options.Fit, options.Last);
+
+            if (breakError != null)
+                throw new InvalidOperationException(breakError);
+
+            // Шаг 3: Построение выходных строк
+            bool touch = options.Touch ?? (options.Fit || options.Last);
+
+            var lines = ConstructLines(
+                extractResult, affixes,
+                options.Hang, options.Just, options.Last, touch);
+
+            return lines.ToArray();
         }
 
         //
@@ -595,10 +630,7 @@ namespace xParLib
         /// Аналог блока "Construct the lines" из reformat.c (строки 459–522).
         /// Включает фазу touch и цикл построения строк с префиксами, телом и суффиксами.
         /// </remarks>
-        /// <param name="words">Список слов с расставленными NextLine.</param>
-        /// <param name="prefixes">Префиксы исходных строк.</param>
-        /// <param name="suffixes">Суффиксы исходных строк.</param>
-        /// <param name="L">Длина тела строки (может измениться при touch).</param>
+        /// <param name="extractResult">Результат выделения слов.</param>
         /// <param name="affixes">Результат вычисления аффиксов IP.</param>
         /// <param name="hang">Минимальное количество строк.</param>
         /// <param name="just">Режим justification.</param>
@@ -606,16 +638,17 @@ namespace xParLib
         /// <param name="touch">Изменить L на фактическую длину.</param>
         /// <returns>Список выходных строк.</returns>
         public static IReadOnlyList<string> ConstructLines(
-            List<Word> words,
-            List<string> prefixes,
-            List<string> suffixes,
-            int L,
+            ExtractWordsResult extractResult,
             SetAffixesResult affixes,
             int hang,
             bool just,
             bool last,
             bool touch)
         {
+            var words = extractResult.Words;
+            var prefixes = extractResult.Prefixes;
+            var suffixes = extractResult.Suffixes;
+            int L = extractResult.L;
             int numIn = prefixes.Count;
             int prefix = affixes.Prefix;
             int suffix = affixes.Suffix;

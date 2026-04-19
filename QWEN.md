@@ -72,10 +72,11 @@
   - `ReformatModule.ExtractWords(...)` — выделение слов, обработка guess, проверка/разбиение длины (аналог reformat.c строки 331–430)
     - Сигнатура: `ExtractWords(IReadOnlyList<LineSegment> segments, int startIndex, int endIndex, int prefix, int suffix, int width, Charset terminalChars, bool cap, bool guess, bool report)`
     - Возвращает `ExtractWordsResult`
-  - `ReformatModule.Reformat(...)` — главный метод форматирования (заглушка, реализуется в следующих шагах)
+  - `ReformatModule.Reformat(...)` — главный метод форматирования: ExtractWords → NormalBreaks/JustBreaks → ConstructLines (аналог reformat() из reformat.c, строка 297)
   - `ReformatModule.SimpleBreaks(List<Word>, int L, bool last)` — выбор разрывов строк, максимизация кратчайшей строки (аналог simplebreaks(), reformat.c строки 98–136)
   - `ReformatModule.NormalBreaks(List<Word>, int L, bool fit, bool last)` — выбор разрывов строк для just=0, три этапа оптимизации (аналог normalbreaks(), reformat.c строки 138–196)
   - `ReformatModule.JustBreaks(List<Word>, int L, bool last)` — выбор разрывов строк для just=1, justification по обоим краям (аналог justbreaks(), reformat.c строки 211–289)
+  - `ReformatModule.ConstructLines(ExtractWordsResult, SetAffixesResult, int hang, bool just, bool last, bool touch)` — построение выходных строк с префиксами, телом и суффиксами (аналог "Construct the lines", reformat.c строки 459–522)
 - Вспомогательные методы (private в ReformatModule): `GetGraphemeWidth`, `CalcVisualWidth`, `GetSuffix`, `CalcGraphemeWidthRange`, `IsAlphanumeric`, `IsCurious`, `IsCapitalized`, `SplitWord`
 - Вспомогательные методы (private в LineReader): `IsBodiless`, `IsInserted`, `IsVacant`, `CountGraphemes`, `CountNonSpaceGraphemes`
 - Вспомогательные методы (public в LineReader): `GetGraphemes(string)` — получение списка графем-кластеров строки
@@ -105,6 +106,8 @@
     - должна быть глава **Цель шага** с кратким описанием цели шага
     - должна быть глава **План шага** с подробным описанием шага
     - должна быть глава **Результат шага** с подробным описанием, что было сделано
+- **Старые шаги не редактируются** — файлы `History/h_*.md` зафиксированы как часть истории развития проекта.
+  Все изменения, уточнения и исправления описываются только в текущем шаге.
 
 ## Требования к оформлению кода
 

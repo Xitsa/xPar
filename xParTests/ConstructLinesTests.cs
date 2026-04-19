@@ -26,6 +26,11 @@ namespace xParTests
             return new SetAffixesResult(prefix, suffix, afp, fs);
         }
 
+        private static ExtractWordsResult ER(List<Word> words, List<string> prefixes, List<string> suffixes, int l)
+        {
+            return new ExtractWordsResult(words, prefixes, suffixes, l, null);
+        }
+
         // ============================================================
         // Базовые тесты
         // ============================================================
@@ -38,8 +43,7 @@ namespace xParTests
             var suffixes = new List<string>();
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Empty(result);
@@ -53,8 +57,7 @@ namespace xParTests
             var suffixes = new List<string> { "" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Single(result);
@@ -73,8 +76,7 @@ namespace xParTests
             var suffixes = new List<string> { "<<" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(2, 2),
+                ER(words, prefixes, suffixes, 10), A(2, 2),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Single(result);
@@ -96,8 +98,7 @@ namespace xParTests
             var suffixes = new List<string> { ".1", ".2" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(2, 2),
+                ER(words, prefixes, suffixes, 10), A(2, 2),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Equal(2, result.Count);
@@ -121,8 +122,7 @@ namespace xParTests
             var suffixes = new List<string> { "", "" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Equal(2, result.Count);
@@ -142,8 +142,7 @@ namespace xParTests
             var suffixes = new List<string> { "" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 5, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 5), A(0, 0),
                 hang: 3, just: false, last: false, touch: false);
 
             Assert.Equal(3, result.Count);
@@ -170,8 +169,7 @@ namespace xParTests
             // L=20, но фактическая макс длина = 5
             // touch=true → L станет 5
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 20, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 20), A(0, 0),
                 hang: 0, just: false, last: false, touch: true);
 
             Assert.Equal(2, result.Count);
@@ -198,8 +196,7 @@ namespace xParTests
             // L=10, 2 слова на одной строке, extra=10-2-1-2=5, numgaps=1
             // just=true → 5 дополнительных пробелов в 1 промежуток
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: true, last: true, touch: false);
 
             Assert.Single(result);
@@ -223,8 +220,7 @@ namespace xParTests
             var suffixes = new List<string> { "", "" };
 
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Equal(2, result.Count);
@@ -247,8 +243,7 @@ namespace xParTests
             // Оба слова на одной строке, ok — shifted
             // "hi" + " " + " " (shifted) + "ok" = "hi  ok"
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 10, affixes: A(0, 0),
+                ER(words, prefixes, suffixes, 10), A(0, 0),
                 hang: 0, just: false, last: false, touch: false);
 
             Assert.Single(result);
@@ -275,8 +270,7 @@ namespace xParTests
 
             // hang=3, numIn=1 → дополнительные строки используют fallback
             var result = ReformatModule.ConstructLines(
-                words, prefixes, suffixes,
-                L: 5, affixes: A(2, 2, afp: 2, fs: 2),
+                ER(words, prefixes, suffixes, 5), A(2, 2, afp: 2, fs: 2),
                 hang: 3, just: false, last: false, touch: false);
 
             Assert.Equal(3, result.Count);
