@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using xParLib;
@@ -19,7 +20,6 @@ namespace xpar
         /// <param name="args">Аргументы командной строки.</param>
         static void Main(string[] args)
         {
-            Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
 
             // 1. Инициализация charset'ов из переменных окружения (как в par.c)
@@ -64,18 +64,14 @@ namespace xpar
             // 6. Чтение stdin и трансформация
             var transformer = new StringTransformer();
             var lines = new List<string>();
+
+            using var reader = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8);
+
             string? curLine;
-
-            do
+            while ((curLine = reader.ReadLine()) != null)
             {
-                curLine = Console.ReadLine();
-                if (curLine != null)
-                {
-                    lines.Add(curLine);
-                }
+                lines.Add(curLine);
             }
-            while (curLine != null);
-
             var results = transformer.Transform(lines, options);
             foreach (var result in results)
             {
