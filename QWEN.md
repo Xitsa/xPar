@@ -136,3 +136,4 @@
 - **Публикация утилиты:** `dotnet publish xPar -c Release -o ./publish`
   - Результат: `./publish/xpar.exe`
   - Использование: `.\publish\xpar.exe w15 < input.txt`
+- **Выпуск версии:** `git tag v1.0.0 && git push origin v1.0.0`
