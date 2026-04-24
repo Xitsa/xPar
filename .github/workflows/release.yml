@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -42,7 +45,7 @@ jobs:
         run: tar -czf ./release/xPar-${{ github.ref_name }}-linux-x64.tar.gz -C ./publish .
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ./release/*
           tag_name: ${{ github.ref_name }}
