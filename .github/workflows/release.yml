@@ -19,15 +19,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
       - name: Publish
-        run: dotnet publish -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:DebugType=None -o ./publish
+        run: dotnet publish xPar -c Release -r ${{ matrix.rid }} --self-contained true /p:PublishSingleFile=true /p:DebugType=None -o ./publish
 
       - name: Archive Windows
         if: matrix.os == 'windows-latest'
