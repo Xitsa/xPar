@@ -311,6 +311,25 @@ namespace xParTests
             Assert.True(result.Words[1].Flags.HasFlag(WordFlags.Shifted));
         }
 
+        [Fact]
+        public void ExtractWords_Guess_ShiftedOnTwoSpaces_Cyrillic()
+        {
+            // "Привет.  Мир" — curious + capitalized, два пробела
+            var segments = ToSegments("Привет.  Мир");
+
+            var result = ReformatModule.ExtractWords(
+                segments, 0, 0,
+                prefix: 0, suffix: 0, width: 72,
+                TerminalChars, cap: false, guess: true, report: false);
+
+            Assert.Null(result.ErrorMessage);
+            // Не слились, но "World" помечен как Shifted
+            Assert.Equal(2, result.Words.Count);
+            Assert.Equal("Привет.", result.Words[0].Text);
+            Assert.Equal("Мир", result.Words[1].Text);
+            Assert.True(result.Words[1].Flags.HasFlag(WordFlags.Shifted));
+        }
+
         // ============================================================
         // Report: ошибка при слове > L
         // ============================================================
